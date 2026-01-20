@@ -4,15 +4,13 @@ import netlify from '@astrojs/netlify';
 import path from 'node:path';
 
 export default defineConfig({
-  site: 'http://localhost:4321',
-  output: 'hybrid',
+  site: 'https://belgotours.com',
+  output: 'static',          // ✅ antes era hybrid (ya no existe)
   trailingSlash: 'ignore',
 
-  adapter: netlify(),
+  adapter: netlify(),        // ✅ obligatorio para prerender=false
 
-  integrations: [
-    tailwind(),
-  ],
+  integrations: [tailwind()],
 
   vite: {
     resolve: {
