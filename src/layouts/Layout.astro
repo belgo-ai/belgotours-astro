@@ -15,7 +15,9 @@ const currentLang = currentUrl.split('/')[1] || 'es';
 // Detectar si estamos dentro de una página de tours,
 // donde NO debe aparecer el selector de idioma global
 // ni el WhatsApp flotante
-const isTourPage = currentUrl.includes('/tours/');
+const isTourDetailPage =
+  /^\/(es|en|it|fr|pt)?\/tours\/[^/]+\/?$/.test(currentUrl);
+
 const showLanguageSelector = !isTourPage;
 
 // Generar etiquetas hreflang para SEO multi-idioma
@@ -105,9 +107,10 @@ const languages = ['es', 'en', 'it', 'fr', 'pt'];
     <!-- WHATSAPP FLOTANTE GLOBAL
          ❌ NO aparece en /tours/*
          ✅ Sí aparece en home, blog, info, etc. -->
-    {!isTourPage && (
-      <WhatsAppFloat lang={currentLang} />
-    )}
+    {!isTourDetailPage && (
+  <WhatsAppFloat lang={currentLang} />
+)}
+
 
   </body>
 </html>
