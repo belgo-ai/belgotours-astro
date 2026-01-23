@@ -48,22 +48,31 @@ const attrs = tourData.attributes ?? tourData;
 const tourId = tourData.id ?? attrs?.id ?? null;
 
 /* =========================================================
-MEDIA HELPER
+MEDIA HELPER (SAFE · STAGING & PROD)
 ========================================================= */
 function mediaUrl(media, preferredSize = "large") {
-if (!media) return "";
+  if (!media) return "";
 
-const apiBase =
-import.meta.env.PUBLIC_STRAPI_URL?.replace("/api", "") ||
-"http://168.119.183.247:1337";
+  // Usamos SIEMPRE la base real que ya conoce Astro
+  const apiBase =
+    (import.meta.env.PUBLIC_STRAPI_URL || "")
+      .replace(/\/api\/?$/, "")
+      .replace(/\/$/, "");
 
-const url =
-media?.formats?.[preferredSize]?.url ||
-media?.formats?.medium?.url ||
-media?.formats?.small?.url ||
-media?.url;
+  const path =
+    media?.formats?.[preferredSize]?.url ||
+    media?.formats?.medium?.url ||
+    media?.formats?.small?.url ||
+    media?.url ||
+    "";
 
-return url ? `${apiBase}${url}` : "";
+  // Si Strapi ya devuelve URL absoluta → la respetamos
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+
+  // Si no, construimos URL segura (sin forzar protocolo)
+  return path ? `${apiBase}${path}` : "";
 }
 
 /* =========================================================
@@ -166,6 +175,7 @@ reservar: isPrivate ? "Solicitar tour privado" : "Reservar ahora",
 verDisponibilidad: "Ver disponibilidad",
 overview: "Descripción",
 itinerario: "Itinerario",
+itinerarioIntro: "Descubre los lugares que visitaremos paso a paso durante el recorrido",
 puntoEncuentro: "Punto de encuentro",
 reviews: "Reseñas",
 verEnMapa: "Ver en Google Maps",
@@ -181,6 +191,7 @@ reservar: isPrivate ? "Request private tour" : "Book now",
 verDisponibilidad: "Check availability",
 overview: "Overview",
 itinerario: "Itinerary",
+itinerarioIntro: "Discover the places we will visit step by step during the tour",
 puntoEncuentro: "Meeting point",
 reviews: "Reviews",
 verEnMapa: "Open in Google Maps",
@@ -196,6 +207,7 @@ reservar: isPrivate ? "Richiedi tour privato" : "Prenota ora",
 verDisponibilidad: "Vedi disponibilità",
 overview: "Descrizione",
 itinerario: "Itinerario",
+itinerarioIntro: "Scopri i luoghi che visiteremo passo dopo passo durante il tour",
 puntoEncuentro: "Punto d’incontro",
 reviews: "Recensioni",
 verEnMapa: "Apri in Google Maps",
@@ -211,6 +223,7 @@ reservar: "Demander un tour privé",
 verDisponibilidad: "Voir disponibilités",
 overview: "Description",
 itinerario: "Itinéraire",
+itinerarioIntro: "Découvrez les lieux que nous visiterons étape par étape pendant la visite",
 puntoEncuentro: "Point de rencontre",
 reviews: "Avis",
 verEnMapa: "Ouvrir Google Maps",
@@ -569,8 +582,9 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
         {ui.itinerario}
       </h2>
       <p class="mt-3 text-base md:text-lg text-gray-600">
-        Descubre los lugares que visitaremos paso a paso durante el recorrido
-      </p>
+  {ui.itinerarioIntro}
+</p>
+
     </div>
 
     <!-- Lista de paradas -->
@@ -783,7 +797,15 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
 
 <!-- Integraciones (client) -->
 {tour.elementosUnicos?.aiAssistant && (
-<AIAssistant tourId={tour.slug} tourName={tour.titulo} client:load />
+<AIAssistant
+  tourId={tour.slug}
+  tourName={tour.titulo}
+  lang={lang}
+  ciudad={tour.ciudad}
+  tipo={tipoTour}
+
+/>
+
 )}
 {tour.elementosUnicos?.gamificacion && (
 <GamificationSystem tourId={tour.slug} tourName={tour.titulo} client:load />

@@ -1,7 +1,8 @@
 // src/lib/api.js
 
 const STRAPI_URL =
-  import.meta.env.PUBLIC_STRAPI_URL || 'http://168.119.183.247:1337/api';
+  import.meta.env.PUBLIC_STRAPI_URL || 'http://api.dev.belgotours.com:8080';
+
 
 /**
  * =====================================================

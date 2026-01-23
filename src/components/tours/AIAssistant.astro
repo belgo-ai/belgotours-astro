@@ -1,17 +1,82 @@
 ---
-// Componente de Asistente IA - UX Premium BelgoTours (tamaños intactos)
+
+// Componente de Asistente IA - UX Premium BelgoTours
 export interface Props {
   tourId: string;
   tourName: string;
+  lang: "es" | "en" | "it" | "fr";
+  ciudad: "bruselas" | "brujas";
+  tipo: "free" | "privado" | "especial";
 }
 
-const { tourId, tourName } = Astro.props;
+const { tourId, tourName, lang, ciudad, tipo } = Astro.props;
+
+// Textos UI por idioma (para que NO quede en español)
+const UI = {
+  es: {
+    title: "BelgoAI Assistant",
+    subtitlePrefix: "Para",
+    hello: `¡Hola! Soy tu asistente para el ${tourName}. ¿En qué puedo ayudarte?`,
+    placeholder: "Escribe tu pregunta…",
+    quick1: "📍 Punto de encuentro",
+    quick2: "⏱️ Duración y horarios",
+    quick3: "🎒 Qué llevar al tour",
+    q1: "¿Dónde es el punto de encuentro?",
+    q2: "¿Cuánto dura el tour?",
+    q3: "¿Qué debo llevar?",
+  },
+  en: {
+    title: "BelgoAI Assistant",
+    subtitlePrefix: "For",
+    hello: `Hi! I'm your assistant for ${tourName}. How can I help?`,
+    placeholder: "Type your question…",
+    quick1: "📍 Meeting point",
+    quick2: "⏱️ Duration & schedule",
+    quick3: "🎒 What to bring",
+    q1: "Where is the meeting point?",
+    q2: "How long does the tour last?",
+    q3: "What should I bring?",
+  },
+  it: {
+    title: "BelgoAI Assistant",
+    subtitlePrefix: "Per",
+    hello: `Ciao! Sono il tuo assistente per ${tourName}. Come posso aiutarti?`,
+    placeholder: "Scrivi la tua domanda…",
+    quick1: "📍 Punto d’incontro",
+    quick2: "⏱️ Durata e orari",
+    quick3: "🎒 Cosa portare",
+    q1: "Dov’è il punto d’incontro?",
+    q2: "Quanto dura il tour?",
+    q3: "Cosa dovrei portare?",
+  },
+  fr: {
+    title: "BelgoAI Assistant",
+    subtitlePrefix: "Pour",
+    hello: `Bonjour ! Je suis ton assistant pour ${tourName}. Comment puis-je aider ?`,
+    placeholder: "Écris ta question…",
+    quick1: "📍 Point de rencontre",
+    quick2: "⏱️ Durée et horaires",
+    quick3: "🎒 Quoi apporter",
+    q1: "Où est le point de rencontre ?",
+    q2: "Combien de temps dure le tour ?",
+    q3: "Que dois-je apporter ?",
+  },
+};
+
+const t = UI[lang] || UI.es;
+
 ---
 
 <div
   id="aiAssistant"
+  data-lang={lang}
+  data-ciudad={ciudad}
+  data-tipo={tipo}
+  data-tour-id={tourId}
+  data-tour-name={tourName}
   class="fixed bottom-28 right-6 z-40 transition-all duration-300"
 >
+
   <!-- Botón flotante -->
   <button 
     id="aiAssistantButton"
@@ -42,7 +107,7 @@ const { tourId, tourName } = Astro.props;
           <span class="text-lg">🤖</span>
           <div>
             <h3 class="font-bold text-sm text-white">BelgoAI Assistant</h3>
-            <p class="text-xs text-yellow-300">Para {tourName}</p>
+            <p class="text-xs text-yellow-300">{t.subtitlePrefix} {tourName}</p>
           </div>
         </div>
         <button
@@ -60,36 +125,36 @@ const { tourId, tourName } = Astro.props;
       <div class="ai-message bot-message mb-4">
         <div class="bg-white rounded-lg p-3 shadow-sm border">
           <p class="text-sm text-gray-700">
-            ¡Hola! Soy tu asistente IA para el {tourName}.  
-            ¿En qué puedo ayudarte?
-          </p>
+  {t.hello}
+</p>
+
 
           <div class="mt-3 space-y-1">
             <button
               class="quick-question-btn block w-full text-left text-xs
                      text-gray-800 hover:text-black
                      p-2 rounded hover:bg-gray-100"
-              data-question="¿Dónde es el punto de encuentro?"
+              data-question={t.q1}
             >
-              📍 Punto de encuentro
+              {t.quick1}
             </button>
 
             <button
               class="quick-question-btn block w-full text-left text-xs
                      text-gray-800 hover:text-black
                      p-2 rounded hover:bg-gray-100"
-              data-question="¿Cuánto dura el tour?"
+              data-question={t.q2}
             >
-              ⏱️ Duración y horarios
+              {t.quick2}
             </button>
 
             <button
               class="quick-question-btn block w-full text-left text-xs
                      text-gray-800 hover:text-black
                      p-2 rounded hover:bg-gray-100"
-              data-question="¿Qué debo llevar?"
+              data-question={t.q3}
             >
-              🎒 Qué llevar al tour
+             {t.quick3}
             </button>
           </div>
         </div>
@@ -102,7 +167,7 @@ const { tourId, tourName } = Astro.props;
         <input 
           type="text"
           id="aiChatInput"
-          placeholder="Escribe tu pregunta…"
+          placeholder={t.placeholder}
           class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm
                  focus:ring-2 focus:ring-[#FACC15] focus:border-transparent"
         />
@@ -122,10 +187,193 @@ const { tourId, tourName } = Astro.props;
 </div>
 
 <script is:inline>
-/* 🔹 TU SCRIPT ORIGINAL – NO MODIFICADO */
+const root = document.getElementById("aiAssistant");
+
+const __AI_CTX__ = root ? {
+  lang: root.dataset.lang,
+  ciudad: root.dataset.ciudad,
+  tipo: root.dataset.tipo,
+  tourId: root.dataset.tourId,
+  tourName: root.dataset.tourName
+} : null;
+
+function initAiAssistant() {
+  if (!__AI_CTX__) return;
+
+  const btn = document.getElementById("aiAssistantButton");
+  const chat = document.getElementById("aiChatContainer");
+  const closeBtn = document.getElementById("closeChatButton");
+  const messages = document.getElementById("aiChatMessages");
+  const input = document.getElementById("aiChatInput");
+  const sendBtn = document.getElementById("sendMessageButton");
+
+  if (!btn || !chat || !messages || !input || !sendBtn) return;
+
+  // --- Knowledge base por idioma/ciudad/tipo ---
+  const AI_KNOWLEDGE = {
+    es: {
+      bruselas: {
+        free: {
+          meeting: "📍 El punto de encuentro exacto está en la sección de mapa del tour.",
+          duration: "⏱️ En promedio dura 2–2.5 horas.",
+          bring: "🎒 Calzado cómodo, agua y ropa según el clima.",
+          default: "🤖 Puedo ayudarte con horarios, punto de encuentro o recomendaciones."
+        }
+      },
+      brujas: {
+        free: {
+          meeting: "📍 El punto de encuentro se indica tras la reserva (sección de mapa).",
+          duration: "⏱️ En promedio dura cerca de 2 horas.",
+          bring: "🎒 Calzado cómodo y cámara: Brujas es preciosa para fotos.",
+          default: "🤖 Puedo ayudarte con detalles del Free Tour en Brujas."
+        }
+      }
+    },
+
+    en: {
+      bruselas: {
+        free: {
+          meeting: "📍 The exact meeting point is in the map section of the tour.",
+          duration: "⏱️ It usually lasts around 2–2.5 hours.",
+          bring: "🎒 Comfortable shoes, water, and weather-appropriate clothing.",
+          default: "🤖 I can help with meeting point, schedule, and tips."
+        }
+      }
+    },
+
+    it: {
+      bruselas: {
+        free: {
+          meeting: "📍 Il punto di incontro è indicato nella sezione mappa del tour.",
+          duration: "⏱️ Di solito dura 2–2,5 ore.",
+          bring: "🎒 Scarpe comode, acqua e abbigliamento adeguato al meteo.",
+          default: "🤖 Posso aiutarti con punto d’incontro, orari e consigli."
+        }
+      }
+    },
+
+    fr: {
+      bruselas: {
+        free: {
+          meeting: "📍 Le point de rencontre exact est dans la section carte du tour.",
+          duration: "⏱️ En général, ça dure 2–2h30.",
+          bring: "🎒 Chaussures confortables, eau, et vêtements selon la météo.",
+          default: "🤖 Je peux aider avec le point de rencontre, les horaires et des conseils."
+        }
+      }
+    }
+  };
+
+  function getKnowledge() {
+    const { lang, ciudad, tipo } = __AI_CTX__;
+    return (
+      AI_KNOWLEDGE?.[lang]?.[ciudad]?.[tipo] ||
+      AI_KNOWLEDGE?.[lang]?.[ciudad]?.free ||
+      AI_KNOWLEDGE?.es?.bruselas?.free
+    );
+  }
+
+  function aiReply(question) {
+  const kb = getKnowledge();
+  const q = question.toLowerCase();
+  const lang = __AI_CTX__.lang;
+
+  const keywords = {
+    es: {
+      meeting: ["punto", "encuentro"],
+      duration: ["dur", "tiempo"],
+      bring: ["llevar", "traer"]
+    },
+    en: {
+      meeting: ["meeting"],
+      duration: ["duration", "long"],
+      bring: ["bring"]
+    },
+    it: {
+      meeting: ["incontro"],
+      duration: ["durata"],
+      bring: ["portare"]
+    },
+    fr: {
+      meeting: ["rencontre"],
+      duration: ["durée"],
+      bring: ["apporter"]
+    }
+  };
+
+  const k = keywords[lang] || keywords.es;
+
+  if (k.meeting.some(w => q.includes(w))) return kb.meeting;
+  if (k.duration.some(w => q.includes(w))) return kb.duration;
+  if (k.bring.some(w => q.includes(w))) return kb.bring;
+
+  return kb.default;
+}
+
+  function sendMessage(text, from = "user") {
+    const wrapper = document.createElement("div");
+    wrapper.className = `ai-message mb-3 ${from === "user" ? "text-right" : ""}`;
+
+    wrapper.innerHTML = `
+      <div class="inline-block max-w-[85%] rounded-lg px-3 py-2 text-sm shadow
+        ${from === "user" ? "bg-black text-white" : "bg-white border text-gray-700"}">
+        ${text}
+      </div>
+    `;
+
+    messages.appendChild(wrapper);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  // Abrir / cerrar
+  btn.addEventListener("click", () => {
+    chat.classList.toggle("hidden");
+    setTimeout(() => input.focus(), 0);
+  });
+
+  closeBtn?.addEventListener("click", () => {
+    chat.classList.add("hidden");
+  });
+
+  // Enviar
+  sendBtn.addEventListener("click", () => {
+    const text = input.value.trim();
+    if (!text) return;
+
+    sendMessage(text, "user");
+    input.value = "";
+
+    setTimeout(() => {
+      sendMessage(aiReply(text), "bot");
+    }, 250);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendBtn.click();
+  });
+
+  // Preguntas rápidas
+  document.querySelectorAll(".quick-question-btn").forEach((b) => {
+    b.addEventListener("click", () => {
+      const q = b.getAttribute("data-question");
+      if (!q) return;
+      sendMessage(q, "user");
+      setTimeout(() => sendMessage(aiReply(q), "bot"), 250);
+    });
+  });
+}
+
+// ✅ Astro Island: ejecutar aunque DOMContentLoaded ya haya pasado
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initAiAssistant);
+} else {
+  initAiAssistant();
+}
+
 </script>
 
 <style>
+
 .ai-message {
   animation: fadeIn 0.3s ease-in;
 }
