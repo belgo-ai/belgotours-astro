@@ -33,15 +33,16 @@ STATIC PATHS
 /* =========================================================
 FETCH TOUR
 ========================================================= */
-const { tourSlug, lang } = Astro.params;
-const tourData = await getTourBySlug(tourSlug, lang);
+const { tourSlug } = Astro.params;
+const lang = Astro.params.lang ?? "es";
 
-if (!tourData) {
-return new Response(null, {
-status: 302,
-headers: { Location: `/${lang}/404/` },
-});
+if (!Astro.params.lang) {
+  return new Response(null, {
+    status: 301,
+    headers: { Location: `/es/tours/${tourSlug}/` },
+  });
 }
+
 
 // Compat Strapi v4/v5
 const attrs = tourData.attributes ?? tourData;

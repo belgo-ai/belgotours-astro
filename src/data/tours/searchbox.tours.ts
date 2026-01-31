@@ -84,7 +84,7 @@ const TOURS: SearchboxTour[] = [
     duration: "2 h 15 min",
     price: "120€ par groupe",
     tourLang: "fr",
-    url: "fr/tours/tour-prive-bruxelles",
+    url: "/fr/tours/tour-prive-bruxelles",
   },
 
   // ✅ PRIVADO BRUJAS (solo ES)
