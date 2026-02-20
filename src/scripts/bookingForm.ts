@@ -200,24 +200,32 @@ bookingRoot.querySelectorAll("input, select, textarea").forEach((input) => {
 
  
 function validateStep1(showUI = false) {
-  const state = window.bookingState || {};
+  window.bookingState = window.bookingState || {};
+  window.bookingState.participants =
+    window.bookingState.participants || {
+      adults: 1,
+      children: 0,
+    };
+
+  const state = window.bookingState;
 
   const hasDate = !!state.selectedDate;
   const hasTime = !!state.selectedTime;
-  const adults = Number(state.participants?.adults || 0);
-  const hasParticipants = adults > 0;
+
+  const adults = Number(state.participants?.adults ?? 1);
+  const hasParticipants = adults >= 1;
 
   const ok = hasDate && hasTime && hasParticipants && state.horarioId;
 
   if (!ok && showUI) {
     if (!hasDate) {
       const calendar = document.querySelector(".calendar-2026") as HTMLElement | null;
-  markFieldError(calendar);
+      markFieldError(calendar);
       return false;
     }
 
     if (!hasTime) {
-      const timeBlock = document.querySelector(".time-slot-selected") as HTMLElement | null;
+      const timeBlock = document.querySelector(".time-slot") as HTMLElement | null;
       markFieldError(timeBlock);
       return false;
     }
@@ -230,7 +238,7 @@ function validateStep1(showUI = false) {
   }
 
   return ok;
- }
+}
 
  // 🔥 URGENCIA INTELIGENTE
 function updateUrgency() {
