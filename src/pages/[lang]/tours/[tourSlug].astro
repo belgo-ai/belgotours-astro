@@ -3,6 +3,8 @@
 ---
 export const prerender = false;
 
+
+
 import { getTourBySlug, getTourSlugs } from "../../../lib/api.js";
 import Layout from "@/layouts/Layout.astro";
 
@@ -34,6 +36,9 @@ STATIC PATHS
 FETCH TOUR
 ========================================================= */
 const { tourSlug, lang: rawLang } = Astro.params;
+console.log("PARAMS:", Astro.params);
+console.log("ENV:", import.meta.env.PUBLIC_STRAPI_URL);
+
 
 type Lang = "es" | "en" | "it" | "fr";
 
@@ -54,7 +59,10 @@ if (!tourData) {
 /* =========================================================
 FETCH REVIEWS (para JSON-LD dinámico real)
 ========================================================= */
-const STRAPI_API = import.meta.env.PUBLIC_STRAPI_URL;
+const STRAPI_API =
+  import.meta.env.PUBLIC_STRAPI_URL ||
+  process.env.PUBLIC_STRAPI_URL ||
+  "https://api.belgotours.com/api";
 
 let reviewsData = null;
 
