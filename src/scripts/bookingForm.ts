@@ -125,33 +125,36 @@ if (!window.bookingState.participants) {
 window.bookingState.tracking = tracking;
 
     function showStep(stepNumber: number) {
-      steps.forEach((s, i) => {
-        if (!s) return;
-        const idx = i + 1;
-        if (idx === stepNumber) {
-          s.classList.remove("hidden");
-          s.classList.add("active");
-        } else {
-          s.classList.remove("active");
-          s.classList.add("hidden");
-        }
-      });
+  steps.forEach((s, i) => {
+    if (!s) return;
+    const idx = i + 1;
 
-      if (successView) successView.classList.add("hidden");
-
-      currentStep = stepNumber;
-      updateNavigation();
-
-      if (stepNumber === 3) {
-        updateSummary();
-      }
-
-      // 🔥 UX CRÍTICO: Siempre empezar arriba
-             bookingRoot.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-            });
+    if (idx === stepNumber) {
+      s.classList.remove("hidden");
+      s.classList.add("active");
+    } else {
+      s.classList.remove("active");
+      s.classList.add("hidden");
     }
+  });
+
+  if (successView) successView.classList.add("hidden");
+
+  currentStep = stepNumber;
+  updateNavigation();
+
+  if (stepNumber === 3) {
+    updateSummary();
+  }
+
+  // ✅ Solo hacer scroll cuando NO es el paso inicial
+  if (stepNumber !== 1) {
+    window.scrollTo({
+      top: bookingRoot.offsetTop - 20,
+      behavior: "smooth",
+    });
+  }
+}
 
     function showSuccess() {
       steps.forEach((s) => {

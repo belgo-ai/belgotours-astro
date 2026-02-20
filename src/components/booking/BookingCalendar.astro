@@ -338,30 +338,17 @@ function getUrgencyText(spots: number): string | null {
   }
 
   return null;
-}  
-
-  function renderHorarios(fecha: string) {
-  contenedor.style.opacity = "0";
-contenedor.style.transition = "opacity 0.18s ease";
-
-setTimeout(() => {
+ }  
+ 
+     function renderHorarios(fecha: string) {
+  // 🔹 Limpiar inmediatamente (sin setTimeout)
   contenedor.innerHTML = "";
-  contenedor.style.opacity = "1";
-}, 120);
-  // 🔥 Scroll suave hacia horarios (solo móvil o si no está visible)
-setTimeout(() => {
-  const rect = contenedor.getBoundingClientRect();
-  const isVisible =
-    rect.top >= 0 &&
-    rect.bottom <= window.innerHeight;
+  contenedor.style.opacity = "0";
+  contenedor.style.transition = "opacity 0.18s ease";
 
-  if (!isVisible) {
-    contenedor.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }
-}, 150);
+  requestAnimationFrame(() => {
+    contenedor.style.opacity = "1";
+  });
 
   const now = new Date();
   const todayStr = now.toISOString().split("T")[0];
@@ -381,137 +368,137 @@ setTimeout(() => {
 
   // 3️⃣ Si no hay horarios válidos → auto avanzar
   if (!delDia.length) {
-  const currentIndex = fechasDisponibles.indexOf(fecha);
+    const currentIndex = fechasDisponibles.indexOf(fecha);
 
-  if (
-    currentIndex !== -1 &&
-    currentIndex < fechasDisponibles.length - 1
-  ) {
-    const siguienteFecha = fechasDisponibles[currentIndex + 1];
-    fechaPicker.value = siguienteFecha;
-    renderHorarios(siguienteFecha);
+    if (
+      currentIndex !== -1 &&
+      currentIndex < fechasDisponibles.length - 1
+    ) {
+      const siguienteFecha = fechasDisponibles[currentIndex + 1];
+      fechaPicker.value = siguienteFecha;
+      renderHorarios(siguienteFecha);
+      return;
+    }
+
+    contenedor.innerHTML =
+      `<p class='text-sm text-gray-500'>${noTimesText}</p>`;
     return;
   }
 
-  contenedor.innerHTML =
-    `<p class='text-sm text-gray-500'>${noTimesText}</p>`;
-  return;
- }
+  // 4️⃣ Render horarios válidos
+  const maxVisible = 2;
+  let expanded = false;
 
- // 4️⃣ Render horarios válidos (máx 2 visibles + expandible)
+  function createHorarioButton(h: any) {
+    const btn = document.createElement("button");
 
-const maxVisible = 2;
-let expanded = false;
+    const urgencyMessage = getUrgencyText(h.cupoDisponible);
 
-function createHorarioButton(h: any) {
-  const btn = document.createElement("button");
+    const urgencia = urgencyMessage
+      ? `<div class='text-xs text-yellow-600 mt-1'>${urgencyMessage}</div>`
+      : "";
 
-  const urgencyMessage = getUrgencyText(h.cupoDisponible);
+    btn.className = `
+      time-slot
+      border border-gray-300
+      rounded-2xl p-4 text-center
+      bg-white
+      hover:border-yellow-400 hover:bg-yellow-50
+      transition
+    `;
 
-  const urgencia = urgencyMessage
-    ? `<div class='text-xs text-yellow-600 mt-1'>${urgencyMessage}</div>`
-    : "";
+    btn.innerHTML = `
+      <div class="text-lg font-semibold text-gray-900">
+        ${h.hora}
+      </div>
+      <div class="text-xs text-gray-500 mt-1">
+        ${h.cupoDisponible} ${spotsText}
+      </div>
+      ${urgencia}
+    `;
 
-  btn.className = `
-    time-slot
-    border border-gray-300
-    rounded-2xl p-4 text-center
-    bg-white
-    hover:border-yellow-400 hover:bg-yellow-50
-    transition
-  `;
+    btn.onclick = () => {
+      document.querySelectorAll(".time-slot").forEach((el) => {
+        el.classList.remove("border-yellow-400", "bg-yellow-100");
+      });
 
-  btn.innerHTML = `
-    <div class="text-lg font-semibold text-gray-900">
-      ${h.hora}
-    </div>
-    <div class="text-xs text-gray-500 mt-1">
-      ${h.cupoDisponible} ${spotsText}
-    </div>
-    ${urgencia}
-  `;
+      btn.classList.add("border-yellow-400", "bg-yellow-100");
 
-  btn.onclick = () => {
-    document.querySelectorAll(".time-slot").forEach((el) => {
-      el.classList.remove("border-yellow-400", "bg-yellow-100");
-    });
+      window.bookingState = window.bookingState || {};
+      window.bookingState.selectedDate = h.fecha;
+      window.bookingState.selectedTime = h.hora;
+      window.bookingState.horarioId = h.id;
 
-    btn.classList.add("border-yellow-400", "bg-yellow-100");
+      window.dispatchEvent(new CustomEvent("dateSelected"));
+      window.dispatchEvent(new CustomEvent("timeSelected"));
+    };
 
-    window.bookingState = window.bookingState || {};
-    window.bookingState.selectedDate = h.fecha;
-    window.bookingState.selectedTime = h.hora;
-    window.bookingState.horarioId = h.id;
-
-    window.dispatchEvent(new CustomEvent("dateSelected"));
-    window.dispatchEvent(new CustomEvent("timeSelected"));
-  };
-
-  return btn;
-}
-
-// 🔹 Render primeros visibles
-delDia.slice(0, maxVisible).forEach((h: any, index: number) => {
-  const btn = createHorarioButton(h);
-  contenedor.appendChild(btn);
-
-  if (index === 0) {
-    btn.click();
+    return btn;
   }
-});
 
-// 🔹 Si hay más → crear toggle
-if (delDia.length > maxVisible) {
-  const hiddenContainer = document.createElement("div");
-  hiddenContainer.className =
-    "col-span-full hidden grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3";
-
-  delDia.slice(maxVisible).forEach((h: any) => {
+  // 🔹 Render primeros visibles
+  delDia.slice(0, maxVisible).forEach((h: any, index: number) => {
     const btn = createHorarioButton(h);
-    hiddenContainer.appendChild(btn);
+    contenedor.appendChild(btn);
+
+    // Solo auto-selecciona si aún no hay horario seleccionado
+    if (!window.bookingState?.selectedTime && index === 0) {
+      btn.click();
+    }
   });
 
-  const toggleBtn = document.createElement("button");
-  toggleBtn.type = "button";
-  toggleBtn.className =
-    "col-span-full mt-4 text-sm text-gray-600 hover:text-gray-900 underline";
+  // 🔹 Si hay más → crear toggle
+  if (delDia.length > maxVisible) {
+    const hiddenContainer = document.createElement("div");
+    hiddenContainer.className =
+      "col-span-full hidden grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3";
 
-  toggleBtn.textContent =
-    currentLang === "en"
-      ? "See more times"
-      : currentLang === "it"
-      ? "Vedi più orari"
-      : currentLang === "fr"
-      ? "Voir plus d'horaires"
-      : "Ver más horarios";
+    delDia.slice(maxVisible).forEach((h: any) => {
+      const btn = createHorarioButton(h);
+      hiddenContainer.appendChild(btn);
+    });
 
-  toggleBtn.onclick = () => {
-    expanded = !expanded;
-    hiddenContainer.classList.toggle("hidden");
+    const toggleBtn = document.createElement("button");
+    toggleBtn.type = "button";
+    toggleBtn.className =
+      "col-span-full mt-4 text-sm text-gray-600 hover:text-gray-900 underline";
 
-    toggleBtn.textContent = expanded
-      ? currentLang === "en"
-        ? "Hide times"
+    toggleBtn.textContent =
+      currentLang === "en"
+        ? "See more times"
         : currentLang === "it"
-        ? "Nascondi orari"
+        ? "Vedi più orari"
         : currentLang === "fr"
-        ? "Masquer les horaires"
-        : "Ocultar horarios"
-      : currentLang === "en"
-      ? "See more times"
-      : currentLang === "it"
-      ? "Vedi più orari"
-      : currentLang === "fr"
-      ? "Voir plus d'horaires"
-      : "Ver más horarios";
-  };
+        ? "Voir plus d'horaires"
+        : "Ver más horarios";
 
-  contenedor.appendChild(toggleBtn);
-  contenedor.appendChild(hiddenContainer);
+    toggleBtn.onclick = () => {
+      expanded = !expanded;
+      hiddenContainer.classList.toggle("hidden");
+
+      toggleBtn.textContent = expanded
+        ? currentLang === "en"
+          ? "Hide times"
+          : currentLang === "it"
+          ? "Nascondi orari"
+          : currentLang === "fr"
+          ? "Masquer les horaires"
+          : "Ocultar horarios"
+        : currentLang === "en"
+        ? "See more times"
+        : currentLang === "it"
+        ? "Vedi più orari"
+        : currentLang === "fr"
+        ? "Voir plus d'horaires"
+        : "Ver más horarios";
+    };
+
+    contenedor.appendChild(toggleBtn);
+    contenedor.appendChild(hiddenContainer);
   }
- }
+}
 
-  renderHorarios(fechaPicker.value);
+  
   fechaPicker.addEventListener("change", (e) => {
   const target = e.target;
   if (!(target instanceof HTMLInputElement)) return;
