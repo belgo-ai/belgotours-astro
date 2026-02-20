@@ -429,6 +429,9 @@ function getUrgencyText(spots: number): string | null {
       window.bookingState.selectedDate = h.fecha;
       window.bookingState.selectedTime = h.hora;
       window.bookingState.horarioId = h.id;
+      if (window.updateBookingNavigation) {
+  window.updateBookingNavigation();
+}
 
       window.dispatchEvent(new CustomEvent("dateSelected"));
       window.dispatchEvent(new CustomEvent("timeSelected"));

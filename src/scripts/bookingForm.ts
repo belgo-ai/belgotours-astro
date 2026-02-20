@@ -350,6 +350,9 @@ function updateUrgency() {
       }
     }
 
+    // 👇 AGREGA ESTO
+(window as any).updateBookingNavigation = updateNavigation;
+
     function updateSummary() {
       const localeMap = {
         es: "es-ES",
