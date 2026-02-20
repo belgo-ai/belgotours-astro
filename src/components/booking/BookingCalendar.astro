@@ -275,8 +275,7 @@ btn.style.scrollSnapAlign = "start";
 
   btn.scrollIntoView({
     behavior: "smooth",
-    inline: "start",
-    block: "nearest"
+    inline: "start"
   });
 
   renderHorarios(fecha);
@@ -442,9 +441,9 @@ function getUrgencyText(spots: number): string | null {
     contenedor.appendChild(btn);
 
     // Solo auto-selecciona si aún no hay horario seleccionado
-    if (!window.bookingState?.selectedTime && index === 0) {
-      btn.click();
-    }
+    if (index === 0) {
+  btn.click();
+}
   });
 
   // 🔹 Si hay más → crear toggle
@@ -502,10 +501,13 @@ function getUrgencyText(spots: number): string | null {
   fechaPicker.addEventListener("change", (e) => {
   const target = e.target;
   if (!(target instanceof HTMLInputElement)) return;
-  renderHorarios(target.value);
 
   window.bookingState = window.bookingState || {};
   window.bookingState.selectedTime = null;
+  window.bookingState.horarioId = null;
+
+  renderHorarios(target.value);
+
 });
 
 });

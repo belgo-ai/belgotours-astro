@@ -124,6 +124,13 @@ if (!window.bookingState.participants) {
 
 window.bookingState.tracking = tracking;
 
+// 🔥 Limpiar errores visuales al escribir (solo una vez)
+bookingRoot.querySelectorAll("input, select, textarea").forEach((input) => {
+  input.addEventListener("input", () => {
+    input.classList.remove("border-red-500", "ring-2", "ring-red-200");
+  });
+});
+
     function showStep(stepNumber: number) {
   steps.forEach((s, i) => {
     if (!s) return;
@@ -204,7 +211,7 @@ function validateStep1(showUI = false) {
 
   if (!ok && showUI) {
     if (!hasDate) {
-      const calendar = document.querySelector(".booking-calendar") as HTMLElement | null;
+      const calendar = document.querySelector(".calendar-2026") as HTMLElement | null;
   markFieldError(calendar);
       return false;
     }
@@ -269,14 +276,7 @@ function updateUrgency() {
     "customerEmailConfirm",
   ];
 
-  const allInputs = bookingRoot.querySelectorAll("input, select, textarea");
-
-allInputs.forEach((input) => {
-  input.addEventListener("input", () => {
-    input.classList.remove("border-red-500", "ring-2", "ring-red-200");
-  });
-});
-
+  
   for (const id of requiredFields) {
   const el = document.getElementById(id) as
     | HTMLInputElement
@@ -399,6 +399,21 @@ allInputs.forEach((input) => {
     document.addEventListener("participantsUpdated", () => {
       updateNavigation();
     });
+
+    // 🔥 Activar navegación dinámica en Step 2
+const step2Inputs = bookingRoot.querySelectorAll(
+  "#step2 input, #step2 select, #step2 textarea"
+);
+
+step2Inputs.forEach((input) => {
+  input.addEventListener("input", () => {
+    updateNavigation();
+  });
+
+  input.addEventListener("change", () => {
+    updateNavigation();
+  });
+});
 
     emailInput?.addEventListener("input", () => validateStep2(false));
     emailConfirmInput?.addEventListener("input", () => {
