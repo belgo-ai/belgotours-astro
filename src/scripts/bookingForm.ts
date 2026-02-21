@@ -6,7 +6,8 @@ import "intl-tel-input/build/css/intlTelInput.css";
 
 
  
- document.addEventListener("DOMContentLoaded", () => {
+ if (typeof window !== "undefined") {
+  document.addEventListener("DOMContentLoaded", () => {
     
     console.log("🚀 Inicializando BookingForm 2030...");
 
@@ -762,13 +763,7 @@ setupAutocomplete("customerCountry", "countrySuggestions", "country");
 setupAutocomplete("customerCity", "citySuggestions", "city");
 
    
-
-    showStep(1);
-    updateNavigation();
+  showStep(1);
+  updateNavigation();
   });
-
-
-
-  
-
-
+}
