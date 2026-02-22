@@ -428,13 +428,16 @@ function getUrgencyText(spots: number): string | null {
       window.bookingState = window.bookingState || {};
       window.bookingState.selectedDate = h.fecha;
       window.bookingState.selectedTime = h.hora;
-      window.bookingState.horarioId = h.id;
-      if (window.updateBookingNavigation) {
-          window.updateBookingNavigation();
-             }
+      window.bookingState.horarioId = Number(h.id);
+      setTimeout(() => {
+  if ((window as any).updateBookingNavigation) {
+    (window as any).updateBookingNavigation();
+  }
+}, 0);
 
       window.dispatchEvent(new CustomEvent("dateSelected"));
       window.dispatchEvent(new CustomEvent("timeSelected"));
+      
     };
 
     return btn;
