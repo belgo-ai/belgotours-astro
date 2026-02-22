@@ -2,7 +2,7 @@
 import BookingSteps from "./BookingSteps.astro";
 import BookingCalendar from "./BookingCalendar.astro";
 import ParticipantCounter from "./ParticipantCounter.astro";
-
+import BookingClient from "./BookingClient";
 
 
 interface Props {
@@ -756,6 +756,4 @@ const STRAPI_API_BASE =
 
 
 </style>
-<script type="module" is:inline>
-  import "../../scripts/bookingForm.ts";
-</script>
+<BookingClient client:load />
