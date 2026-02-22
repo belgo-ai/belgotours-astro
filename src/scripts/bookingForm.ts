@@ -771,3 +771,4 @@ setupAutocomplete("customerCity", "citySuggestions", "city");
   });
 }
 // 🔥 Exponer función global inmediatamente
+export {};
