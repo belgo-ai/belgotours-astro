@@ -505,7 +505,9 @@ canonical={canonicalUrl}
 </div>
 
 <!-- 2) HERO (dinámico desde Strapi) -->
-<section class="relative min-h-[80vh] md:min-h-screen flex items-center justify-center overflow-hidden">
+<section 
+  id="tour-hero"
+  class="relative min-h-[75vh] md:min-h-screen flex items-center justify-center overflow-hidden">
 <div class="absolute inset-0 z-0">
 {tour.heroMedia?.video ? (
 <video
@@ -530,7 +532,7 @@ decoding="async"
 <div class="absolute inset-0 bg-black/45 md:bg-black/50"></div>
 </div>
 
-<div class="container relative z-10 mx-auto px-4 py-14 md:py-20">
+<div class="container relative z-10 mx-auto px-4 py-10 md:py-20">
 <div class="max-w-4xl mx-auto text-center text-white">
 <!-- Badges -->
 <div class="flex flex-wrap justify-center gap-3 mb-6">
@@ -548,17 +550,22 @@ decoding="async"
 </div>
 
 <!-- H1 -->
-<h1 class="text-4xl md:text-6xl lg:text-7xl font-extrabold leading-tight tracking-tight mb-5 md:mb-6">
+<h1 class="text-3xl sm:text-4xl md:text-6xl lg:text-7xl
+           font-extrabold leading-[1.15] tracking-tight
+           mb-4 md:mb-6">
 {tour.seoH1 || tour.titulo}
 </h1>
 
 <!-- Claim (NO heading) -->
-<p class="text-lg md:text-xl lg:text-2xl mb-6 md:mb-8 text-white/85 max-w-2xl mx-auto">
+<p class="text-base sm:text-lg md:text-xl lg:text-2xl
+          mb-5 md:mb-8
+          text-white/85
+          max-w-xl mx-auto leading-relaxed">
 {heroClaim}
 </p>
 
 <!-- Chips -->
-<div class="flex flex-wrap justify-center items-center gap-3 text-sm md:text-base text-white/80 mb-8">
+<div class="flex flex-wrap justify-center items-center gap-2 text-xs md:text-base text-white/80 mb-6">
 {heroConfig?.mostrar_duracion !== false && durationLabel && (
 <span>⏱️ {durationLabel}</span>
 )}
@@ -573,7 +580,12 @@ decoding="async"
 </div>
 
 <!-- CTA Card -->
-<div class="bg-white/10 backdrop-blur-md rounded-2xl p-5 md:p-8 max-w-xl mx-auto border border-white/20 shadow-xl">
+<div class="bg-white/8 backdrop-blur-lg
+            rounded-2xl
+            p-4 md:p-8
+            max-w-lg mx-auto
+            border border-white/15
+            shadow-2xl">
 <div class="flex flex-col md:flex-row items-center justify-between gap-6">
 <div class="text-center md:text-left">
 <div class="text-3xl font-bold text-yellow-400 mb-1">
@@ -594,7 +606,7 @@ class={`${heroCtaMode === "booking" ? "openBookingBtn" : "openPrivateRequestBtn"
 bg-yellow-400 hover:bg-yellow-300
 text-gray-900 font-extrabold
 text-base md:text-lg
-px-6 py-3 md:px-8 md:py-4
+px-6 py-3.5 md:px-8 md:py-4
 rounded-xl
 transition-all duration-300
 hover:scale-[1.02]
@@ -630,14 +642,12 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
 </div>
 </div>
 
-<div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-white/60 text-2xl">
-⬇️
-</div>
+
 </section>
 
 <!-- 3) DESCRIPCIÓN / OVERVIEW -->
 <section
-  id="overview"
+  id="tour-description"
   class="py-12 md:py-20 bg-gray-50 md:bg-white"
 >
   <div class="container mx-auto px-4">
@@ -818,7 +828,8 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
   class="fixed bottom-3 left-3 right-3
          md:left-auto md:right-10 md:bottom-8
          z-40 transition-all duration-300
-         max-w-xl mx-auto md:max-w-none"
+         max-w-xl mx-auto md:max-w-none
+         opacity-0 translate-y-6 pointer-events-none"
 >
   <div
   class="bg-white/95 backdrop-blur-md
@@ -1168,5 +1179,64 @@ window.addEventListener("mouseup", endDrag);
 }
 </script>*/}
 <script is:inline src="/js/bookingPanel.js"></script>
+
+<script>
+if (typeof window !== "undefined") {
+  document.addEventListener("DOMContentLoaded", () => {
+
+    const hero = document.getElementById("tour-hero");
+    const description = document.getElementById("tour-description");
+    const footer = document.getElementById("main-footer");
+    const widget = document.getElementById("bookingWidget");
+    const aiButton = document.getElementById("aiFloatingButton");
+
+    if (!hero || !description || !footer || !widget) return;
+
+    const showSticky = () => {
+      widget.classList.remove("opacity-0", "translate-y-6", "pointer-events-none");
+      aiButton?.classList.remove("opacity-0", "pointer-events-none");
+    };
+
+    const hideSticky = () => {
+      widget.classList.add("opacity-0", "translate-y-6", "pointer-events-none");
+      aiButton?.classList.add("opacity-0", "pointer-events-none");
+    };
+
+    // 1️⃣ Oculto mientras hero está visible
+    const heroObserver = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          hideSticky();
+        }
+      },
+      { threshold: 0.6 }
+    );
+    heroObserver.observe(hero);
+
+    // 2️⃣ Mostrar cuando entra descripción
+    const descriptionObserver = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          showSticky();
+        }
+      },
+      { threshold: 0.2 }
+    );
+    descriptionObserver.observe(description);
+
+    // 3️⃣ Ocultar al llegar al footer
+    const footerObserver = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          hideSticky();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    footerObserver.observe(footer);
+
+  });
+}
+</script>
 
 </Layout>
