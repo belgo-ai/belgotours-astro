@@ -15,6 +15,7 @@ export const GET: APIRoute = async () => {
     // TOURS ES — alta prioridad
     { loc: `${base}/es/tours/free-tour-bruselas`, priority: "1.0", changefreq: "daily" },
     { loc: `${base}/es/tours/free-tour-brujas`, priority: "0.9", changefreq: "daily" },
+    { loc: `${base}/es/tours/free-tour-cerveza-bruselas`, priority: "0.9", changefreq: "daily" },
     { loc: `${base}/es/tours/tour-chocolate-cerveza-bruselas`, priority: "0.8", changefreq: "weekly" },
     { loc: `${base}/es/tours/tour-privado-bruselas`, priority: "0.8", changefreq: "weekly" },
     { loc: `${base}/es/tours/tour-privado-brujas`, priority: "0.7", changefreq: "weekly" },

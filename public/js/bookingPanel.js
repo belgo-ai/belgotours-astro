@@ -1,6 +1,4 @@
 function initBookingPanel() {
-  console.log("BOOKING PANEL INIT");
-
   const overlayEl = document.getElementById("bookingOverlay");
   const panelEl = document.getElementById("bookingPanel");
   const openBtns = document.querySelectorAll(
@@ -9,7 +7,6 @@ function initBookingPanel() {
   const closeBtns = document.querySelectorAll(".closeBookingBtn");
 
   if (!overlayEl || !panelEl || openBtns.length === 0) {
-    console.log("BOOKING ELEMENTS NOT FOUND");
     return;
   }
 

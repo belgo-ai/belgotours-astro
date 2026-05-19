@@ -32,6 +32,15 @@ const TOURS: SearchboxTour[] = [
     url: "/es/tours/free-tour-bruselas",
   },
   {
+    name: "Free Tour de la Cerveza en Bruselas",
+    duration: "2 h 15 min",
+    price: "Pago libre",
+    tourLang: "es",
+    city: "brussels",
+    kind: "free",
+    url: "/es/tours/free-tour-cerveza-bruselas",
+  },
+  {
     name: "Free Tour Brussels in English",
     duration: "2 h 15 min",
     price: "Tip-based",

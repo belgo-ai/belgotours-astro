@@ -31,16 +31,28 @@ const isHomePage = hrefPath === '' || hrefPath === '/';
 const isTourPath = hrefPath.startsWith('/tours/');
 const isLegal = ['/privacy','/terms','/cookies','/legal-notice'].some(p => hrefPath.startsWith(p));
 const TOUR_MAP: Record<string, Record<string, string>> = {
-  '/tours/free-tour-bruselas':              {es:'/tours/free-tour-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles',fr:'/tours/tour-prive-bruxelles',pt:'/tours/free-tour-bruselas'},
-  '/tours/free-tour-brujas':                {es:'/tours/free-tour-brujas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles',fr:'/tours/tour-prive-bruxelles',pt:'/tours/free-tour-brujas'},
-  '/tours/tour-chocolate-cerveza-bruselas': {es:'/tours/tour-chocolate-cerveza-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles',fr:'/tours/tour-prive-bruxelles',pt:'/tours/tour-chocolate-cerveza-bruselas'},
+  // Free Tour Bruselas: equivalentes reales ES/EN/IT. FR no se incluye porque no existe Free Tour francés.
+  '/tours/free-tour-bruselas':              {es:'/tours/free-tour-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles',pt:'/tours/free-tour-bruselas'},
+  '/tours/free-tour-brussels':              {es:'/tours/free-tour-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles',pt:'/tours/free-tour-brussels'},
+  '/tours/free-tour-bruxelles':             {es:'/tours/free-tour-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles',pt:'/tours/free-tour-bruxelles'},
+
+  // Free Tour Brujas: por ahora solo ES. PT apunta al ES porque el home PT muestra tours reales por idioma.
+  '/tours/free-tour-brujas':                {es:'/tours/free-tour-brujas',pt:'/tours/free-tour-brujas'},
+
+  // Free Tour Cerveza: por ahora solo ES. PT apunta al ES por la misma lógica del home PT.
+  '/tours/free-tour-cerveza-bruselas':      {es:'/tours/free-tour-cerveza-bruselas',pt:'/tours/free-tour-cerveza-bruselas'},
+
+  // Tour Chocolate y Cerveza: tour especial solo ES.
+  '/tours/tour-chocolate-cerveza-bruselas': {es:'/tours/tour-chocolate-cerveza-bruselas',pt:'/tours/tour-chocolate-cerveza-bruselas'},
+
+  // Tours privados Bruselas: equivalentes reales ES/EN/IT/FR.
   '/tours/tour-privado-bruselas':           {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles',pt:'/tours/tour-privado-bruselas'},
-  '/tours/tour-privado-brujas':             {es:'/tours/tour-privado-brujas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles',pt:'/tours/tour-privado-brujas'},
-  '/tours/free-tour-brussels':              {es:'/tours/free-tour-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles',fr:'/tours/tour-prive-bruxelles',pt:'/tours/free-tour-brussels'},
   '/tours/private-tour-brussels':           {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles',pt:'/tours/private-tour-brussels'},
-  '/tours/free-tour-bruxelles':             {es:'/tours/free-tour-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles',fr:'/tours/tour-prive-bruxelles',pt:'/tours/free-tour-bruxelles'},
   '/tours/tour-privato-bruxelles':          {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles',pt:'/tours/tour-privato-bruxelles'},
   '/tours/tour-prive-bruxelles':            {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles',pt:'/tours/tour-privado-bruselas'},
+
+  // Tour privado Brujas: por ahora solo ES.
+  '/tours/tour-privado-brujas':             {es:'/tours/tour-privado-brujas',pt:'/tours/tour-privado-brujas'},
 };
 const slugMap = isTourPath ? (TOUR_MAP[hrefPath] ?? null) : null;
 const hreflangLinks = languages.map(lang => {

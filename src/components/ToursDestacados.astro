@@ -55,6 +55,23 @@ const toursData = {
     },
     {
       id: 2,
+      titulo: "Free Tour de la Cerveza en Bruselas",
+      descripcion: "Descubre la historia de la cerveza belga en Bruselas con guías locales, rincones históricos y recomendaciones auténticas.",
+      precio: 0,
+      moneda: "€",
+      tipoPrecio: "Precio libre",
+      duracion: "2 h 15 min",
+      idiomas: ["🇪🇸 Español"],
+      rating: 0,
+      reviews: 0,
+      imagen: "/images/ToursDestacados/free-tour-cerveza-bruselas-belgotours.webp",
+      alt: "Free Tour de la Cerveza en Bruselas con guía local de BelgoTours por la Grand Place y bares históricos belgas",
+      badge: "NUEVO",
+      categoria: "free-tour",
+      slug: "free-tour-cerveza-bruselas"
+    },
+    {
+      id: 2,
       titulo: "Free Tour Brujas en Español", 
       descripcion: "Explora la Venecia del Norte con sus canales medievales y arquitectura impresionante.",
       precio: 0,
@@ -559,7 +576,7 @@ const getTourUrl = (tourSlug: string, lang: string, tourIdiomas: string[]) => {
       <div class="relative h-52 overflow-hidden">
         <img
           src={tour.imagen}
-          alt={tour.titulo}
+          alt={tour.alt || tour.titulo}
           class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div class="absolute inset-0 bg-black/10"></div>

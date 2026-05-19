@@ -37,8 +37,6 @@ STATIC PATHS
 FETCH TOUR
 ========================================================= */
 const { tourSlug, lang: rawLang } = Astro.params;
-console.log("PARAMS:", Astro.params);
-console.log("ENV:", import.meta.env.PUBLIC_STRAPI_URL);
 
 
 type Lang = "es" | "en" | "it" | "fr";
@@ -69,7 +67,13 @@ let reviewsData = null;
 
 try {
   const res = await fetch(
-    `${STRAPI_API}/public/reviews-pro?tour=${tourSlug}&lang=${lang}`
+    `${STRAPI_API}/public/reviews-pro?tour=${tourSlug}&lang=${lang}`,
+    {
+      signal: AbortSignal.timeout(3000),
+      headers: {
+        "Accept": "application/json",
+      },
+    }
   );
 
   if (res.ok) {
