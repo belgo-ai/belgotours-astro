@@ -1,0 +1,53 @@
+---
+import {
+  getTourLanguageMeta,
+} from '../../../lib/app/language';
+
+interface Props {
+  code?: string | null;
+  compact?: boolean;
+}
+
+const {
+  code,
+  compact = false,
+} = Astro.props as Props;
+
+const language = getTourLanguageMeta(code);
+---
+
+<span
+  class:list={[
+    'tour-language-badge',
+    {
+      compact,
+    },
+  ]}
+  title={`Idioma del tour: ${language.name}`}
+  aria-label={`Idioma del tour: ${language.name}`}
+>
+  <span aria-hidden="true">{language.flag}</span>
+  <span>{language.label}</span>
+</span>
+
+<style>
+  .tour-language-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid #dbeafe;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1e40af;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .tour-language-badge.compact {
+    padding: 0.15rem 0.4rem;
+    font-size: 0.68rem;
+  }
+</style>

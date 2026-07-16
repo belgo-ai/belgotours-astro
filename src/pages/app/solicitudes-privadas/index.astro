@@ -1,0 +1,597 @@
+---
+export const prerender = false;
+
+import AppShell from '../../../components/app/layout/AppShell.astro';
+import TourLanguageBadge from '../../../components/app/shared/TourLanguageBadge.astro';
+import { crmApi } from '../../../lib/app/apiClient';
+import { can } from '../../../lib/app/permissions';
+import type {
+  EstadoSolicitudPrivada,
+  PrivateRequest,
+} from '../../../lib/app/types';
+
+const user = Astro.locals.user;
+
+if (!can(user.role, 'private_requests', 'read')) {
+  return Astro.redirect('/app');
+}
+
+const params = Astro.url.searchParams;
+const estado = params.get('estado') || '';
+
+const requestedPage = Number(
+  params.get('page') || '1',
+);
+
+const page =
+  Number.isInteger(requestedPage)
+  && requestedPage > 0
+  && requestedPage <= 100000
+    ? requestedPage
+    : 1;
+
+const pageSize = 30;
+
+const filters: Record<
+  string,
+  string | number
+> = {
+  page,
+  pageSize,
+};
+
+if (estado) {
+  filters.estado = estado;
+}
+
+let result: {
+  data: PrivateRequest[];
+  meta: {
+    pagination: {
+      page: number;
+      pageSize: number;
+      pageCount: number;
+      total: number;
+    };
+  };
+} = {
+  data: [],
+  meta: {
+    pagination: {
+      page: 1,
+      pageSize: 30,
+      pageCount: 0,
+      total: 0,
+    },
+  },
+};
+
+let errorMsg = '';
+
+try {
+  result = await crmApi.privateRequests(user, filters);
+} catch (error) {
+  errorMsg =
+    error instanceof Error
+      ? error.message
+      : 'Error cargando solicitudes privadas.';
+}
+
+const pagination =
+  result.meta.pagination;
+
+const currentPage = Math.max(
+  1,
+  Number(pagination.page || page),
+);
+
+const pageCount = Math.max(
+  0,
+  Number(pagination.pageCount || 0),
+);
+
+const hasPreviousPage =
+  currentPage > 1;
+
+const hasNextPage =
+  pageCount > 0
+  && currentPage < pageCount;
+
+function pageUrl(
+  targetPage: number,
+): string {
+  const query =
+    new URLSearchParams();
+
+  if (estado) {
+    query.set('estado', estado);
+  }
+
+  query.set(
+    'page',
+    String(targetPage),
+  );
+
+  return (
+    `/app/solicitudes-privadas?`
+    + query.toString()
+  );
+}
+
+const states: EstadoSolicitudPrivada[] = [
+  'recibida',
+  'contactada',
+  'confirmada',
+  'realizada',
+  'cancelada',
+  'rechazada',
+];
+
+function formatCreated(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+
+  return new Intl.DateTimeFormat('es-BE', {
+    timeZone: 'Europe/Brussels',
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(date);
+}
+
+function formatPreferredDate(value: string): string {
+  if (!value) return '—';
+
+  const date = new Date(`${value}T12:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString('es-ES');
+}
+---
+
+<AppShell title="Solicitudes privadas" user={user}>
+  <div class="page-top">
+    <div>
+      <h1 class="page-title">Solicitudes privadas</h1>
+      <p class="page-subtitle">
+        Disponibilidad y precio pendientes de confirmación manual.
+      </p>
+    </div>
+  </div>
+
+  <form method="GET" class="filters">
+    <select name="estado">
+      <option value="">Todos los estados</option>
+
+      {states.map((item) => (
+        <option
+          value={item}
+          selected={estado === item}
+        >
+          {item}
+        </option>
+      ))}
+    </select>
+
+    <button type="submit" class="btn-primary">
+      Filtrar
+    </button>
+
+    <a href="/app/solicitudes-privadas" class="btn-ghost">
+      Limpiar
+    </a>
+  </form>
+
+  {errorMsg && (
+    <div class="alert-error">{errorMsg}</div>
+  )}
+
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Recibida</th>
+          <th>Preferencia</th>
+          <th>Tour</th>
+          <th>Cliente</th>
+          <th>Personas</th>
+          <th>Estado</th>
+          <th>Reserva</th>
+          <th></th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {result.data.length === 0 && (
+          <tr>
+            <td colspan="8" class="empty-row">
+              No hay solicitudes con estos filtros.
+            </td>
+          </tr>
+        )}
+
+        {result.data.map((request) => {
+          const pax =
+            Number(request.adultos || 0)
+            + Number(request.ninos || 0);
+
+          return (
+            <tr>
+              <td class="td-small">
+                {formatCreated(request.createdAt)}
+              </td>
+
+              <td>
+                <strong>
+                  {formatPreferredDate(request.fecha_preferida)}
+                </strong>
+                <span class="subvalue">
+                  {request.hora_preferida || '—'}
+                </span>
+              </td>
+
+              <td>
+                <span class="tour-title">
+                  {request.tour?.titulo || '—'}
+                </span>
+
+                <TourLanguageBadge
+                  code={request.idioma_tour}
+                  compact
+                />
+              </td>
+
+              <td>
+                <span class="customer-name">
+                  {request.nombre} {request.apellidos || ''}
+                </span>
+
+                <a
+                  href={`mailto:${request.email}`}
+                  class="contact-link"
+                >
+                  {request.email}
+                </a>
+
+                {request.telefono && (
+                  <a
+                    href={`https://wa.me/${request.telefono.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noopener"
+                    class="contact-link contact-wa"
+                  >
+                    {request.telefono}
+                  </a>
+                )}
+              </td>
+
+              <td class="td-center">
+                <strong>{pax}</strong>
+              </td>
+
+              <td>
+                <span class={`status status-${request.estado}`}>
+                  {request.estado}
+                </span>
+              </td>
+
+              <td>
+                {request.reserva_convertida
+                  ? (
+                    <a
+                      href={`/app/reservas/${request.reserva_convertida.id}`}
+                      class="reservation-link"
+                    >
+                      #{request.reserva_convertida.id}
+                    </a>
+                  )
+                  : <span class="muted">Pendiente</span>}
+              </td>
+
+              <td>
+                <a
+                  href={`/app/solicitudes-privadas/${request.id}`}
+                  class="btn-view"
+                >
+                  Gestionar
+                </a>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-footer">
+    <span>
+      Total:
+      <strong>{pagination.total}</strong>
+      solicitudes
+    </span>
+
+    {pageCount > 1 && (
+      <nav
+        class="pagination"
+        aria-label="Paginación de solicitudes privadas"
+      >
+        {hasPreviousPage
+          ? (
+            <a
+              href={pageUrl(currentPage - 1)}
+              class="pagination-link"
+            >
+              ← Anterior
+            </a>
+          )
+          : (
+            <span class="pagination-disabled">
+              ← Anterior
+            </span>
+          )}
+
+        <span class="pagination-current">
+          Página {currentPage} de {pageCount}
+        </span>
+
+        {hasNextPage
+          ? (
+            <a
+              href={pageUrl(currentPage + 1)}
+              class="pagination-link"
+            >
+              Siguiente →
+            </a>
+          )
+          : (
+            <span class="pagination-disabled">
+              Siguiente →
+            </span>
+          )}
+      </nav>
+    )}
+  </div>
+</AppShell>
+
+<style>
+  .page-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.25rem;
+  }
+
+  .page-title {
+    color: #111827;
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  .page-subtitle {
+    margin-top: 0.2rem;
+    color: #6b7280;
+    font-size: 0.85rem;
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .filters select {
+    padding: 0.45rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    background: #fff;
+    color: #111827;
+    font-size: 0.85rem;
+  }
+
+  .btn-primary {
+    padding: 0.45rem 1rem;
+    border: 0;
+    border-radius: 7px;
+    background: #2563eb;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .btn-ghost {
+    padding: 0.45rem 0.5rem;
+    color: #6b7280;
+    font-size: 0.85rem;
+    text-decoration: none;
+  }
+
+  .alert-error {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: #991b1b;
+    font-size: 0.85rem;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+  }
+
+  .table th {
+    padding: 0.7rem 0.8rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+    color: #6b7280;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .table td {
+    padding: 0.8rem;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle;
+  }
+
+  .table tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .empty-row {
+    padding: 2rem !important;
+    color: #9ca3af;
+    text-align: center;
+  }
+
+  .td-small {
+    color: #6b7280;
+    font-size: 0.76rem;
+    white-space: nowrap;
+  }
+
+  .td-center {
+    text-align: center;
+  }
+
+  .subvalue,
+  .customer-name,
+  .tour-title,
+  .contact-link {
+    display: block;
+  }
+
+  .subvalue {
+    margin-top: 0.15rem;
+    color: #6b7280;
+    font-size: 0.75rem;
+  }
+
+  .tour-title,
+  .customer-name {
+    margin-bottom: 0.25rem;
+    color: #1f2937;
+    font-weight: 600;
+  }
+
+  .contact-link {
+    color: #4b5563;
+    font-size: 0.75rem;
+    text-decoration: none;
+  }
+
+  .contact-wa:hover {
+    color: #15803d;
+  }
+
+  .status {
+    display: inline-flex;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+
+  .status-recibida {
+    background: #eff6ff;
+    color: #1e40af;
+  }
+
+  .status-contactada {
+    background: #f3e8ff;
+    color: #6b21a8;
+  }
+
+  .status-confirmada {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .status-realizada {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .status-cancelada,
+  .status-rechazada {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  .reservation-link,
+  .btn-view {
+    color: #2563eb;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .muted {
+    color: #9ca3af;
+    font-size: 0.75rem;
+  }
+
+  .table-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    color: #6b7280;
+    font-size: 0.85rem;
+  }
+
+  .pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .pagination-link,
+  .pagination-disabled,
+  .pagination-current {
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+  }
+
+  .pagination-link {
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #2563eb;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .pagination-link:hover {
+    background: #eff6ff;
+  }
+
+  .pagination-disabled {
+    border: 1px solid #e5e7eb;
+    color: #9ca3af;
+  }
+
+  .pagination-current {
+    color: #374151;
+    font-weight: 600;
+  }
+</style>

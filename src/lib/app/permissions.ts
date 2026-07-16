@@ -1,14 +1,16 @@
 import type { AppRole } from './types';
 
 export type Resource =
-  | 'reservas' | 'tours' | 'horarios' | 'recurrencias'
-  | 'reviews' | 'clientes' | 'usuarios' | 'mail_jobs' | 'stats';
+  | 'reservas' | 'private_requests' | 'tours' | 'horarios'
+  | 'recurrencias' | 'reviews' | 'clientes' | 'usuarios'
+  | 'mail_jobs' | 'stats';
 
 export type Action = 'read' | 'write' | 'delete' | 'export' | 'approve';
 
 const matrix: Record<AppRole, Partial<Record<Resource, Action[]>>> = {
   super_admin: {
     reservas:     ['read', 'write', 'delete', 'export'],
+    private_requests: ['read', 'write'],
     tours:        ['read', 'write', 'delete'],
     horarios:     ['read', 'write', 'delete'],
     recurrencias: ['read', 'write', 'delete'],
@@ -20,6 +22,7 @@ const matrix: Record<AppRole, Partial<Record<Resource, Action[]>>> = {
   },
   operations_admin: {
     reservas:     ['read', 'write', 'export'],
+    private_requests: ['read', 'write'],
     tours:        ['read', 'write'],
     horarios:     ['read', 'write'],
     recurrencias: ['read', 'write'],
@@ -31,6 +34,7 @@ const matrix: Record<AppRole, Partial<Record<Resource, Action[]>>> = {
   },
   staff: {
     reservas:     ['read', 'write'],
+    private_requests: ['read', 'write'],
     tours:        ['read'],
     horarios:     ['read', 'write'],
     recurrencias: ['read', 'write'],
@@ -42,6 +46,7 @@ const matrix: Record<AppRole, Partial<Record<Resource, Action[]>>> = {
   },
   guide: {
     reservas:     ['read'],
+    private_requests: [],
     tours:        ['read'],
     horarios:     ['read'],
     recurrencias: [],

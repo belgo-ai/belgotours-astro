@@ -1,8 +1,10 @@
 ---
 export const prerender = false;
 import AppShell from '../../../components/app/layout/AppShell.astro';
+import TourLanguageBadge from '../../../components/app/shared/TourLanguageBadge.astro';
 import { crmApi } from '../../../lib/app/apiClient';
 import { can } from '../../../lib/app/permissions';
+import { formatBusinessDateTime } from '../../../lib/app/businessTime';
 
 const user   = Astro.locals.user;
 const id     = Number(Astro.params.id);
@@ -10,44 +12,228 @@ const canEdit = can(user.role, 'reservas', 'write');
 
 if (!can(user.role, 'reservas', 'read')) return Astro.redirect('/app');
 
-// Manejar acciones POST
 let successMsg = '';
-let errorMsg   = '';
+let errorMsg = '';
 
-if (Astro.request.method === 'POST' && canEdit) {
-  const form   = await Astro.request.formData();
-  const action = form.get('_action') as string;
+async function loadReservation() {
+  const response =
+    await crmApi.reserva(
+      user,
+      id,
+    );
 
-  try {
-    if (action === 'update') {
-      await crmApi.reservaUpdate(user, id, {
-        estado:                  form.get('estado') as any,
-        notas_internas:          form.get('notas_internas') as string,
-        observaciones_guia:      form.get('observaciones_guia') as string,
-        comportamiento_cliente:  form.get('comportamiento_cliente') as any,
-      });
-      successMsg = 'Reserva actualizada correctamente.';
-    }
-    if (action === 'send_review') {
-      await crmApi.sendReview(user, id);
-      successMsg = 'Email de reseña enviado correctamente.';
-    }
-  } catch (e) {
-    errorMsg = 'Error al procesar la acción.';
+  return response.data;
+}
+
+type ReviewActionCode =
+  | 'eligible'
+  | 'sent'
+  | 'cancelled'
+  | 'private_workflow'
+  | 'not_confirmed'
+  | 'future'
+  | 'invalid_date'
+  | 'unsupported';
+
+function getReviewAction(
+  reservation: any,
+): {
+  allowed: boolean;
+  code: ReviewActionCode;
+  message: string;
+} {
+  if (reservation.resena_enviada) {
+    return {
+      allowed: false,
+      code: 'sent',
+      message: '✓ Enviado',
+    };
   }
+
+  if (reservation.estado === 'cancelada') {
+    return {
+      allowed: false,
+      code: 'cancelled',
+      message:
+        'No disponible: reserva cancelada.',
+    };
+  }
+
+  if (
+    reservation.booking_mode === 'request'
+    || reservation.review_mode === 'manual'
+  ) {
+    return {
+      allowed: false,
+      code: 'private_workflow',
+      message:
+        'Gestión manual desde Solicitudes privadas.',
+    };
+  }
+
+  if (
+    reservation.booking_mode !== 'direct'
+    || reservation.review_mode !== 'auto'
+  ) {
+    return {
+      allowed: false,
+      code: 'unsupported',
+      message:
+        'La combinación de modos no permite esta acción.',
+    };
+  }
+
+  if (reservation.estado !== 'confirmada') {
+    return {
+      allowed: false,
+      code: 'not_confirmed',
+      message:
+        'Disponible únicamente para reservas confirmadas.',
+    };
+  }
+
+  const tourTime =
+    new Date(
+      reservation.fecha_hora_tour,
+    ).getTime();
+
+  if (!Number.isFinite(tourTime)) {
+    return {
+      allowed: false,
+      code: 'invalid_date',
+      message:
+        'La fecha del tour no es válida.',
+    };
+  }
+
+  if (tourTime > Date.now()) {
+    return {
+      allowed: false,
+      code: 'future',
+      message:
+        'Disponible después de realizarse el tour.',
+    };
+  }
+
+  return {
+    allowed: true,
+    code: 'eligible',
+    message:
+      'Pendiente de envío.',
+  };
 }
 
 let reserva: any = null;
+
 try {
-  const res = await crmApi.reserva(user, id);
-  reserva = res.data;
+  reserva = await loadReservation();
 } catch {
   return Astro.redirect('/app/reservas');
 }
 
-const fechaTour  = new Date(reserva.fecha_hora_tour);
-const paxTotal   = (reserva.adultos || 0) + (reserva.ninos || 0);
-const createdAt  = new Date(reserva.createdAt);
+if (
+  Astro.request.method === 'POST'
+  && canEdit
+) {
+  const form =
+    await Astro.request.formData();
+
+  const action =
+    String(form.get('_action') || '');
+
+  try {
+    if (action === 'update') {
+      await crmApi.reservaUpdate(
+        user,
+        id,
+        {
+          estado:
+            form.get('estado') as any,
+
+          notas_internas:
+            String(
+              form.get('notas_internas')
+              || '',
+            ),
+
+          observaciones_guia:
+            String(
+              form.get('observaciones_guia')
+              || '',
+            ),
+
+          comportamiento_cliente:
+            form.get(
+              'comportamiento_cliente',
+            ) as any,
+        },
+      );
+
+      successMsg =
+        'Reserva actualizada correctamente.';
+    }
+
+    if (action === 'send_review') {
+      const eligibility =
+        getReviewAction(reserva);
+
+      if (!eligibility.allowed) {
+        throw new Error(
+          eligibility.message,
+        );
+      }
+
+      await crmApi.sendReview(
+        user,
+        id,
+      );
+
+      successMsg =
+        'Email de reseña enviado correctamente.';
+    }
+
+    reserva = await loadReservation();
+  } catch (error) {
+    errorMsg =
+      error instanceof Error
+        ? error.message
+        : 'No se pudo procesar la acción.';
+  }
+}
+
+const reviewAction =
+  getReviewAction(reserva);
+
+const fechaTour = formatBusinessDateTime(
+  reserva.fecha_hora_tour,
+  {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  },
+);
+
+const horaTour = formatBusinessDateTime(
+  reserva.fecha_hora_tour,
+  {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  },
+);
+
+const createdAt = formatBusinessDateTime(
+  reserva.createdAt,
+  {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  },
+);
+
+const paxTotal =
+  (reserva.adultos || 0)
+  + (reserva.ninos || 0);
 ---
 
 <AppShell title={`Reserva #${id}`} user={user}>
@@ -122,14 +308,18 @@ const createdAt  = new Date(reserva.createdAt);
         <div class="field-row">
           <span class="field-label">Fecha y hora</span>
           <span class="field-value">
-            {fechaTour.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
+            {fechaTour}
             &nbsp;·&nbsp;
-            {fechaTour.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })}
+            {horaTour}
           </span>
         </div>
         <div class="field-row">
           <span class="field-label">Idioma tour</span>
-          <span class="field-value">{reserva.idioma_tour?.toUpperCase()}</span>
+          <span class="field-value">
+            <TourLanguageBadge
+              code={reserva.idioma_tour}
+            />
+          </span>
         </div>
         <div class="field-row">
           <span class="field-label">Tipo</span>
@@ -243,23 +433,51 @@ const createdAt  = new Date(reserva.createdAt);
           </div>
           <div class="action-row">
             <div>
-              <span class="action-label">Email de reseña</span>
-              <span class="action-status">
-                {reserva.resena_enviada ? '✓ Enviado' : '✗ Pendiente'}
+              <span class="action-label">
+                Email de reseña
+              </span>
+
+              <span
+                class:list={[
+                  'action-status',
+                  {
+                    'action-status-ok':
+                      reviewAction.code === 'sent',
+
+                    'action-status-warn':
+                      reviewAction.code === 'future'
+                      || reviewAction.code === 'not_confirmed',
+
+                    'action-status-blocked':
+                      reviewAction.code === 'cancelled'
+                      || reviewAction.code === 'private_workflow'
+                      || reviewAction.code === 'invalid_date'
+                      || reviewAction.code === 'unsupported',
+                  },
+                ]}
+              >
+                {reviewAction.message}
               </span>
             </div>
-            {canEdit && !reserva.resena_enviada && (
-              <form method="POST">
-                <input type="hidden" name="_action" value="send_review" />
-                <button type="submit" class="btn-action">Enviar ahora</button>
-              </form>
-            )}
-            {canEdit && reserva.resena_enviada && (
-              <form method="POST">
-                <input type="hidden" name="_action" value="send_review" />
-                <button type="submit" class="btn-action btn-reenviar">Reenviar</button>
-              </form>
-            )}
+
+            {canEdit
+              && reviewAction.allowed
+              && (
+                <form method="POST">
+                  <input
+                    type="hidden"
+                    name="_action"
+                    value="send_review"
+                  />
+
+                  <button
+                    type="submit"
+                    class="btn-action"
+                  >
+                    Enviar ahora
+                  </button>
+                </form>
+              )}
           </div>
           <div class="action-row">
             <div>
@@ -290,7 +508,7 @@ const createdAt  = new Date(reserva.createdAt);
         )}
         <div class="field-row">
           <span class="field-label">Creada</span>
-          <span class="field-value">{createdAt.toLocaleString('es-ES')}</span>
+          <span class="field-value">{createdAt}</span>
         </div>
         <div class="field-row">
           <span class="field-label">Sync plataforma</span>
@@ -344,8 +562,10 @@ const createdAt  = new Date(reserva.createdAt);
   .action-row { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid #f3f4f6; gap: 0.75rem; }
   .action-row:last-child { border-bottom: none; }
   .action-label { display: block; font-size: 0.8rem; color: #6b7280; }
-  .action-status { font-size: 0.8rem; color: #374151; }
+  .action-status { display: block; margin-top: 0.15rem; font-size: 0.8rem; color: #374151; }
+  .action-status-ok { color: #166534; }
+  .action-status-warn { color: #92400e; }
+  .action-status-blocked { color: #6b7280; }
   .btn-action { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; padding: 0.35rem 0.75rem; font-size: 0.78rem; cursor: pointer; white-space: nowrap; text-decoration: none; }
   .btn-action:hover { background: #e5e7eb; }
-  .btn-reenviar { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
 </style>

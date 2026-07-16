@@ -2,7 +2,13 @@
 type Lang = "es" | "en" | "it" | "fr";
 
 interface Props {
-  tour: any;
+  tour: {
+    id?: number | string | null;
+    slug?: string;
+    titulo?: string;
+    booking_mode?: "direct" | "request";
+    review_mode?: "auto" | "manual";
+  };
   lang: Lang;
 }
 
@@ -12,140 +18,659 @@ const safeLang: Lang = ["es", "en", "it", "fr"].includes(lang)
   ? lang
   : "es";
 
-const titleByLang: Record<Lang, string> = {
-  es: "Solicita tu tour privado a medida",
-  en: "Request your custom private tour",
-  it: "Richiedi il tuo tour privato su misura",
-  fr: "Demandez votre visite privée sur mesure",
+const STRAPI_API_BASE = (
+  import.meta.env.PUBLIC_STRAPI_URL
+  || "http://localhost:1337/api"
+).replace(/\/$/, "");
+
+const copy: Record<Lang, Record<string, string>> = {
+  es: {
+    title: "Solicita tu tour privado",
+    subtitle:
+      "Envíanos tus preferencias. La fecha, la disponibilidad y el precio deberán ser confirmados por BelgoTours.",
+    pending:
+      "Esto es una solicitud, no una reserva confirmada. Te contactaremos por WhatsApp o email.",
+    firstName: "Nombre",
+    lastName: "Apellidos",
+    email: "Correo electrónico",
+    phone: "WhatsApp o teléfono",
+    date: "Fecha preferida",
+    time: "Hora preferida",
+    adults: "Adultos",
+    children: "Niños",
+    language: "Idioma del tour",
+    message: "Detalles o necesidades especiales",
+    messagePlaceholder:
+      "Itinerario deseado, movilidad reducida, intereses, punto de salida u otra información útil.",
+    privacy:
+      "Acepto que BelgoTours utilice estos datos para responder a esta solicitud.",
+    submit: "Enviar solicitud",
+    sending: "Enviando solicitud…",
+    successTitle: "Solicitud recibida",
+    success:
+      "BelgoTours revisará disponibilidad y precio. Te contactaremos por WhatsApp o email antes de confirmar el tour.",
+    reference: "Referencia de solicitud",
+    emailSent: "También enviamos un correo de recepción.",
+    emailPending:
+      "La solicitud fue guardada, aunque el correo de recepción no pudo confirmarse.",
+    error:
+      "No se pudo enviar la solicitud. Revisa los datos e inténtalo nuevamente.",
+  },
+  en: {
+    title: "Request your private tour",
+    subtitle:
+      "Send us your preferences. Date, availability and price must be confirmed by BelgoTours.",
+    pending:
+      "This is a request, not a confirmed booking. We will contact you by WhatsApp or email.",
+    firstName: "First name",
+    lastName: "Last name",
+    email: "Email address",
+    phone: "WhatsApp or phone",
+    date: "Preferred date",
+    time: "Preferred time",
+    adults: "Adults",
+    children: "Children",
+    language: "Tour language",
+    message: "Details or special requirements",
+    messagePlaceholder:
+      "Preferred itinerary, reduced mobility, interests, departure point or other useful information.",
+    privacy:
+      "I agree that BelgoTours may use these details to respond to this request.",
+    submit: "Send request",
+    sending: "Sending request…",
+    successTitle: "Request received",
+    success:
+      "BelgoTours will check availability and price. We will contact you by WhatsApp or email before confirming the tour.",
+    reference: "Request reference",
+    emailSent: "We also sent a receipt email.",
+    emailPending:
+      "The request was saved, although the receipt email could not be confirmed.",
+    error:
+      "The request could not be sent. Check the information and try again.",
+  },
+  it: {
+    title: "Richiedi il tuo tour privato",
+    subtitle:
+      "Inviaci le tue preferenze. Data, disponibilità e prezzo devono essere confermati da BelgoTours.",
+    pending:
+      "Questa è una richiesta, non una prenotazione confermata. Ti contatteremo via WhatsApp o email.",
+    firstName: "Nome",
+    lastName: "Cognome",
+    email: "Indirizzo email",
+    phone: "WhatsApp o telefono",
+    date: "Data preferita",
+    time: "Orario preferito",
+    adults: "Adulti",
+    children: "Bambini",
+    language: "Lingua del tour",
+    message: "Dettagli o esigenze speciali",
+    messagePlaceholder:
+      "Itinerario desiderato, mobilità ridotta, interessi, punto di partenza o altre informazioni.",
+    privacy:
+      "Accetto che BelgoTours utilizzi questi dati per rispondere alla richiesta.",
+    submit: "Invia richiesta",
+    sending: "Invio della richiesta…",
+    successTitle: "Richiesta ricevuta",
+    success:
+      "BelgoTours verificherà disponibilità e prezzo. Ti contatteremo via WhatsApp o email prima di confermare il tour.",
+    reference: "Riferimento richiesta",
+    emailSent: "Abbiamo inviato anche un'email di ricezione.",
+    emailPending:
+      "La richiesta è stata salvata, anche se l'email di ricezione non è stata confermata.",
+    error:
+      "Non è stato possibile inviare la richiesta. Controlla i dati e riprova.",
+  },
+  fr: {
+    title: "Demandez votre visite privée",
+    subtitle:
+      "Envoyez-nous vos préférences. La date, la disponibilité et le prix doivent être confirmés par BelgoTours.",
+    pending:
+      "Il s'agit d'une demande, et non d'une réservation confirmée. Nous vous contacterons par WhatsApp ou email.",
+    firstName: "Prénom",
+    lastName: "Nom",
+    email: "Adresse email",
+    phone: "WhatsApp ou téléphone",
+    date: "Date souhaitée",
+    time: "Heure souhaitée",
+    adults: "Adultes",
+    children: "Enfants",
+    language: "Langue de la visite",
+    message: "Détails ou besoins particuliers",
+    messagePlaceholder:
+      "Itinéraire souhaité, mobilité réduite, centres d'intérêt, point de départ ou autre information utile.",
+    privacy:
+      "J'accepte que BelgoTours utilise ces données pour répondre à cette demande.",
+    submit: "Envoyer la demande",
+    sending: "Envoi de la demande…",
+    successTitle: "Demande reçue",
+    success:
+      "BelgoTours vérifiera la disponibilité et le prix. Nous vous contacterons par WhatsApp ou email avant de confirmer la visite.",
+    reference: "Référence de la demande",
+    emailSent: "Nous avons également envoyé un email de réception.",
+    emailPending:
+      "La demande a été enregistrée, même si l'email de réception n'a pas pu être confirmé.",
+    error:
+      "La demande n'a pas pu être envoyée. Vérifiez les informations et réessayez.",
+  },
 };
 
-const subtitleByLang: Record<Lang, string> = {
-  es: "Te enviaremos una propuesta personalizada en menos de 24h.",
-  en: "We’ll send you a tailored proposal within 24 hours.",
-  it: "Ti invieremo una proposta personalizzata entro 24 ore.",
-  fr: "Nous vous enverrons une proposition personnalisée sous 24h.",
-};
-
-const buttonByLang: Record<Lang, string> = {
-  es: "📩 Recibir propuesta personalizada",
-  en: "📩 Get custom proposal",
-  it: "📩 Ricevi proposta personalizzata",
-  fr: "📩 Recevoir une proposition",
-};
+const text = copy[safeLang];
 ---
 
-<div class="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
+<div
+  id="privateRequestForm"
+  data-private-request-root
+  data-api={STRAPI_API_BASE}
+  data-lang={safeLang}
+  data-tour-slug={tour.slug ?? ""}
+  class="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden"
+>
+  <div class="border-b border-gray-200 p-6 md:p-8">
+    <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900">
+      {text.title}
+    </h2>
 
-  <!-- Encabezado -->
-  <div class="space-y-2">
-    <h3 class="text-2xl md:text-3xl font-extrabold text-gray-900">
-      {titleByLang[safeLang]}
-    </h3>
-    <p class="text-sm text-gray-600">
-      {subtitleByLang[safeLang]}
+    <p class="mt-2 text-gray-600">
+      {tour.titulo}
     </p>
+
+    <div class="mt-5 rounded-xl border border-yellow-300 bg-yellow-50 p-4">
+      <p class="font-semibold text-yellow-900">
+        {text.subtitle}
+      </p>
+
+      <p class="mt-1 text-sm text-yellow-800">
+        {text.pending}
+      </p>
+    </div>
   </div>
 
   <form
-    class="space-y-5"
-    method="POST"
-    action="/api/private-request"
+    data-private-request-form
+    class="space-y-6 p-6 md:p-8"
+    method="post"
   >
-    <input type="hidden" name="tour_slug" value={tour.slug} />
-    <input type="hidden" name="idioma" value={lang} />
-    <input type="hidden" name="tipo_experiencia" value="privado" />
+    <input type="hidden" name="tourSlug" value={tour.slug ?? ""} />
+    <input type="hidden" name="lang" value={safeLang} />
 
-    <!-- Nombre + Email -->
-    <div class="grid md:grid-cols-2 gap-4">
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
-          {lang === "es" && "Nombre"}
-          {lang === "en" && "First name"}
-          {lang === "it" && "Nome"}
-          {lang === "fr" && "Prénom"} *
-        </label>
+    <div
+      aria-hidden="true"
+      class="absolute left-[-10000px] top-auto h-px w-px overflow-hidden"
+    >
+      <label>
+        Website
+        <input
+          type="text"
+          name="website"
+          tabindex="-1"
+          autocomplete="off"
+        />
+      </label>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <label class="space-y-1">
+        <span class="block text-sm font-medium text-gray-700">
+          {text.firstName} *
+        </span>
         <input
           required
+          type="text"
           name="nombre"
-          class="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-yellow-300 focus:border-gray-900 outline-none transition"
+          maxlength="120"
+          autocomplete="given-name"
+          class="w-full rounded-xl border border-gray-300 p-3 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-yellow-300"
         />
-      </div>
+      </label>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
-          Email *
-        </label>
+      <label class="space-y-1">
+        <span class="block text-sm font-medium text-gray-700">
+          {text.lastName}
+        </span>
+        <input
+          type="text"
+          name="apellidos"
+          maxlength="160"
+          autocomplete="family-name"
+          class="w-full rounded-xl border border-gray-300 p-3 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-yellow-300"
+        />
+      </label>
+
+      <label class="space-y-1">
+        <span class="block text-sm font-medium text-gray-700">
+          {text.email} *
+        </span>
         <input
           required
           type="email"
           name="email"
-          class="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-yellow-300 focus:border-gray-900 outline-none transition"
+          maxlength="254"
+          autocomplete="email"
+          class="w-full rounded-xl border border-gray-300 p-3 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-yellow-300"
         />
-      </div>
-    </div>
+      </label>
 
-    <!-- WhatsApp + Personas -->
-    <div class="grid md:grid-cols-2 gap-4">
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
-          📱 WhatsApp *
-        </label>
+      <label class="space-y-1">
+        <span class="block text-sm font-medium text-gray-700">
+          {text.phone}
+        </span>
+        <input
+          type="tel"
+          name="telefono"
+          maxlength="80"
+          autocomplete="tel"
+          placeholder="+32 456 13 96 12"
+          class="w-full rounded-xl border border-gray-300 p-3 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-yellow-300"
+        />
+      </label>
+
+      <label class="space-y-1">
+        <span class="block text-sm font-medium text-gray-700">
+          {text.date} *
+        </span>
         <input
           required
-          name="telefono"
-          class="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-yellow-300 focus:border-gray-900 outline-none transition"
-          placeholder="+34 612 345 678"
+          type="date"
+          name="fecha_preferida"
+          class="w-full rounded-xl border border-gray-300 p-3 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-yellow-300"
         />
-      </div>
+      </label>
 
-      <div>
-  <label class="block text-sm font-medium text-gray-700 mb-1">
-    {safeLang === "es" && "Fecha aproximada"}
-    {safeLang === "en" && "Preferred date"}
-    {safeLang === "it" && "Data preferita"}
-    {safeLang === "fr" && "Date souhaitée"}
-  </label>
-  <input
-    type="date"
-    name="fecha_preferida"
-    class="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-yellow-300 focus:border-gray-900 outline-none transition"
-  />
-</div>
+      <label class="space-y-1">
+        <span class="block text-sm font-medium text-gray-700">
+          {text.time} *
+        </span>
+        <input
+          required
+          type="time"
+          name="hora_preferida"
+          step="300"
+          class="w-full rounded-xl border border-gray-300 p-3 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-yellow-300"
+        />
+      </label>
+
+      <label class="space-y-1">
+        <span class="block text-sm font-medium text-gray-700">
+          {text.adults} *
+        </span>
+        <input
+          required
+          type="number"
+          name="adultos"
+          min="0"
+          max="200"
+          value="1"
+          inputmode="numeric"
+          class="w-full rounded-xl border border-gray-300 p-3 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-yellow-300"
+        />
+      </label>
+
+      <label class="space-y-1">
+        <span class="block text-sm font-medium text-gray-700">
+          {text.children} *
+        </span>
+        <input
+          required
+          type="number"
+          name="ninos"
+          min="0"
+          max="200"
+          value="0"
+          inputmode="numeric"
+          class="w-full rounded-xl border border-gray-300 p-3 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-yellow-300"
+        />
+      </label>
+
+      <label class="space-y-1 md:col-span-2">
+        <span class="block text-sm font-medium text-gray-700">
+          {text.language} *
+        </span>
+        <select
+          required
+          name="idioma_tour"
+          class="w-full rounded-xl border border-gray-300 bg-white p-3 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-yellow-300"
+        >
+          <option value="es" selected={safeLang === "es"}>🇪🇸 ES</option>
+          <option value="en" selected={safeLang === "en"}>🇬🇧 EN</option>
+          <option value="it" selected={safeLang === "it"}>🇮🇹 IT</option>
+          <option value="fr" selected={safeLang === "fr"}>🇫🇷 FR</option>
+        </select>
+      </label>
     </div>
 
-    <!-- Mensaje -->
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">
-        {lang === "es" && "Detalles del tour (opcional)"}
-        {lang === "en" && "Tour details (optional)"}
-        {lang === "it" && "Dettagli del tour (opzionale)"}
-        {lang === "fr" && "Détails du tour (optionnel)"}
-      </label>
+    <label class="block space-y-1">
+      <span class="block text-sm font-medium text-gray-700">
+        {text.message}
+      </span>
       <textarea
         name="mensaje"
-        rows="3"
-        class="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-yellow-300 focus:border-gray-900 outline-none transition"
-        placeholder={
-          lang === "es"
-            ? "Ej: fecha aproximada, intereses, niños, movilidad reducida..."
-            : "Preferred date, interests, group details..."
-        }
+        rows="4"
+        maxlength="2000"
+        placeholder={text.messagePlaceholder}
+        class="w-full resize-y rounded-xl border border-gray-300 p-3 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-yellow-300"
       ></textarea>
-    </div>
+    </label>
 
-    <!-- Botón -->
+    <label class="flex items-start gap-3">
+      <input
+        required
+        type="checkbox"
+        name="privacy"
+        class="mt-1 accent-gray-900"
+      />
+      <span class="text-sm text-gray-700">
+        {text.privacy} *
+      </span>
+    </label>
+
+    <div
+      data-private-request-error
+      class="hidden rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+      role="alert"
+      aria-live="polite"
+    ></div>
+
     <button
-      class="w-full bg-yellow-400 hover:bg-yellow-300 text-gray-900 font-extrabold py-4 rounded-xl transition transform hover:scale-105 shadow-md"
+      data-private-request-submit
+      type="submit"
+      class="w-full rounded-xl bg-yellow-400 px-8 py-4 font-extrabold text-gray-900 shadow-md transition hover:scale-[1.01] hover:bg-yellow-300 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
     >
-      {buttonByLang[safeLang]}
+      {text.submit}
     </button>
 
-    <!-- Micro confianza -->
-    <p class="text-xs text-gray-500 text-center">
-      {lang === "es" && "Sin pago ahora · Respuesta rápida · Sin compromiso"}
-      {lang === "en" && "No payment now · Fast response · No obligation"}
-      {lang === "it" && "Nessun pagamento ora · Risposta rapida · Nessun impegno"}
-      {lang === "fr" && "Aucun paiement maintenant · Réponse rapide · Sans engagement"}
+    <p class="text-center text-xs text-gray-500">
+      {text.pending}
     </p>
   </form>
+
+  <div
+    data-private-request-success
+    class="hidden space-y-5 p-8 text-center md:p-12"
+    aria-live="polite"
+  >
+    <div class="text-5xl" aria-hidden="true">✓</div>
+
+    <h3 class="text-2xl font-extrabold text-green-700">
+      {text.successTitle}
+    </h3>
+
+    <p class="mx-auto max-w-2xl text-gray-700">
+      {text.success}
+    </p>
+
+    <p class="text-sm text-gray-600">
+      {text.reference}:
+      <strong data-private-request-id>—</strong>
+    </p>
+
+    <p
+      data-private-request-email-status
+      class="text-sm text-gray-600"
+    ></p>
+
+    <div class="flex flex-col justify-center gap-3 sm:flex-row">
+      <a
+        data-private-request-whatsapp
+        href="https://wa.me/32456139612"
+        target="_blank"
+        rel="noopener"
+        class="rounded-xl bg-green-600 px-5 py-3 font-semibold text-white no-underline hover:bg-green-700"
+      >
+        WhatsApp
+      </a>
+
+      <a
+        data-private-request-email
+        href="mailto:reservas@belgotours.com"
+        class="rounded-xl border border-gray-300 bg-white px-5 py-3 font-semibold text-gray-800 no-underline hover:bg-gray-50"
+      >
+        Email
+      </a>
+    </div>
+  </div>
 </div>
+
+<script>
+  const privateRequestCopy = {
+    es: {
+      sending: "Enviando solicitud…",
+      submit: "Enviar solicitud",
+      error: "No se pudo enviar la solicitud. Revisa los datos e inténtalo nuevamente.",
+      participants: "Debe viajar al menos una persona.",
+      emailSent: "También enviamos un correo de recepción.",
+      emailPending: "La solicitud fue guardada, aunque el correo de recepción no pudo confirmarse.",
+    },
+    en: {
+      sending: "Sending request…",
+      submit: "Send request",
+      error: "The request could not be sent. Check the information and try again.",
+      participants: "At least one person must participate.",
+      emailSent: "We also sent a receipt email.",
+      emailPending: "The request was saved, although the receipt email could not be confirmed.",
+    },
+    it: {
+      sending: "Invio della richiesta…",
+      submit: "Invia richiesta",
+      error: "Non è stato possibile inviare la richiesta. Controlla i dati e riprova.",
+      participants: "Deve partecipare almeno una persona.",
+      emailSent: "Abbiamo inviato anche un'email di ricezione.",
+      emailPending: "La richiesta è stata salvata, anche se l'email di ricezione non è stata confermata.",
+    },
+    fr: {
+      sending: "Envoi de la demande…",
+      submit: "Envoyer la demande",
+      error: "La demande n'a pas pu être envoyée. Vérifiez les informations et réessayez.",
+      participants: "Au moins une personne doit participer.",
+      emailSent: "Nous avons également envoyé un email de réception.",
+      emailPending: "La demande a été enregistrée, même si l'email de réception n'a pas pu être confirmé.",
+    },
+  } as const;
+
+  function initialisePrivateRequestForm(root: HTMLElement) {
+    const form = root.querySelector<HTMLFormElement>(
+      "[data-private-request-form]",
+    );
+
+    const submit = root.querySelector<HTMLButtonElement>(
+      "[data-private-request-submit]",
+    );
+
+    const errorBox = root.querySelector<HTMLElement>(
+      "[data-private-request-error]",
+    );
+
+    const successBox = root.querySelector<HTMLElement>(
+      "[data-private-request-success]",
+    );
+
+    if (!form || !submit || !errorBox || !successBox) {
+      return;
+    }
+
+    const rawLang = root.dataset.lang || "es";
+    const lang =
+      rawLang === "en"
+      || rawLang === "it"
+      || rawLang === "fr"
+        ? rawLang
+        : "es";
+
+    const text = privateRequestCopy[lang];
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      errorBox.classList.add("hidden");
+      errorBox.textContent = "";
+
+      if (!form.reportValidity()) {
+        return;
+      }
+
+      const formData = new FormData(form);
+      const adultos = Number(formData.get("adultos") || 0);
+      const ninos = Number(formData.get("ninos") || 0);
+
+      if (
+        !Number.isInteger(adultos)
+        || !Number.isInteger(ninos)
+        || adultos < 0
+        || ninos < 0
+        || adultos + ninos < 1
+      ) {
+        errorBox.textContent = text.participants;
+        errorBox.classList.remove("hidden");
+        return;
+      }
+
+      const payload = {
+        tourSlug: String(formData.get("tourSlug") || ""),
+        lang,
+        nombre: String(formData.get("nombre") || ""),
+        apellidos: String(formData.get("apellidos") || ""),
+        email: String(formData.get("email") || ""),
+        telefono: String(formData.get("telefono") || ""),
+        fecha_preferida: String(
+          formData.get("fecha_preferida") || "",
+        ),
+        hora_preferida: String(
+          formData.get("hora_preferida") || "",
+        ),
+        adultos,
+        ninos,
+        idioma_tour: String(
+          formData.get("idioma_tour") || lang,
+        ),
+        mensaje: String(formData.get("mensaje") || ""),
+        website: String(formData.get("website") || ""),
+      };
+
+      submit.disabled = true;
+      submit.textContent = text.sending;
+
+      try {
+        const apiBase =
+          root.dataset.api
+          || "http://localhost:1337/api";
+
+        const response = await fetch(
+          `${apiBase}/private-requests`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify(payload),
+          },
+        );
+
+        const body = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok || body?.success !== true) {
+          throw new Error(
+            body?.message
+            || body?.error?.message
+            || text.error,
+          );
+        }
+
+        const responseBookingMode =
+          String(body?.bookingMode || "")
+            .trim()
+            .toLowerCase();
+
+        const responseReviewMode =
+          String(body?.reviewMode || "")
+            .trim()
+            .toLowerCase();
+
+        if (
+          responseBookingMode !== "request"
+          || responseReviewMode !== "manual"
+        ) {
+          throw new Error(text.error);
+        }
+
+        const idElement =
+          root.querySelector<HTMLElement>(
+            "[data-private-request-id]",
+          );
+
+        if (idElement) {
+          idElement.textContent =
+            body.requestId
+              ? String(body.requestId)
+              : "—";
+        }
+
+        const emailStatus =
+          root.querySelector<HTMLElement>(
+            "[data-private-request-email-status]",
+          );
+
+        if (emailStatus) {
+          emailStatus.textContent =
+            body.emailSent
+              ? text.emailSent
+              : text.emailPending;
+        }
+
+        const whatsapp =
+          root.querySelector<HTMLAnchorElement>(
+            "[data-private-request-whatsapp]",
+          );
+
+        if (
+          whatsapp
+          && typeof body?.contact?.whatsapp === "string"
+          && body.contact.whatsapp.startsWith("https://")
+        ) {
+          whatsapp.href = body.contact.whatsapp;
+        }
+
+        const email =
+          root.querySelector<HTMLAnchorElement>(
+            "[data-private-request-email]",
+          );
+
+        if (
+          email
+          && typeof body?.contact?.email === "string"
+          && body.contact.email.includes("@")
+        ) {
+          email.href = `mailto:${body.contact.email}`;
+        }
+
+        form.classList.add("hidden");
+        successBox.classList.remove("hidden");
+        successBox.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      } catch (error) {
+        errorBox.textContent =
+          error instanceof Error
+            ? error.message
+            : text.error;
+
+        errorBox.classList.remove("hidden");
+        errorBox.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+
+        submit.disabled = false;
+        submit.textContent = text.submit;
+      }
+    });
+  }
+
+  document
+    .querySelectorAll<HTMLElement>(
+      "[data-private-request-root]",
+    )
+    .forEach(initialisePrivateRequestForm);
+</script>

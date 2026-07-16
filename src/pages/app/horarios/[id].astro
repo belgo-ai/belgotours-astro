@@ -1,13 +1,52 @@
 ---
 export const prerender = false;
 import AppShell from '../../../components/app/layout/AppShell.astro';
+import TourLanguageBadge from '../../../components/app/shared/TourLanguageBadge.astro';
 import { crmFetch } from '../../../lib/app/apiClient';
 import { can } from '../../../lib/app/permissions';
+import { getHorarioTourLanguage } from '../../../lib/app/language';
 
 const user    = Astro.locals.user;
 if (!can(user.role, 'horarios', 'read')) return Astro.redirect('/app');
 const canEdit = can(user.role, 'horarios', 'write');
 const id      = Number(Astro.params.id);
+
+function actionErrorMessage(error: unknown): string {
+  const message =
+    error instanceof Error
+      ? error.message
+      : String(error);
+
+  if (
+    message.includes(
+      'HORARIO_CAPACITY_BELOW_OCCUPANCY',
+    )
+  ) {
+    return 'El cupo no puede ser inferior al cupo ocupado ni a los pasajeros activos.';
+  }
+
+  if (message.includes('HORARIO_INVALID_CAPACITY')) {
+    return 'El cupo debe ser un número entero entre 1 y 200.';
+  }
+
+  if (message.includes('HORARIO_NOT_FOUND')) {
+    return 'El horario ya no existe.';
+  }
+
+  if (message.includes('HORARIO_INVALID_ID')) {
+    return 'El identificador del horario no es válido.';
+  }
+
+  if (
+    message.includes(
+      'HORARIO_INVALID_AVAILABILITY',
+    )
+  ) {
+    return 'No se pudo interpretar el nuevo estado del horario.';
+  }
+
+  return 'Error al procesar la acción.';
+}
 
 let successMsg = '';
 let errorMsg   = '';
@@ -32,7 +71,9 @@ if (Astro.request.method === 'POST' && canEdit) {
       });
       successMsg = 'Cupo actualizado.';
     }
-  } catch { errorMsg = 'Error al procesar la acción.'; }
+  } catch (error) {
+    errorMsg = actionErrorMessage(error);
+  }
 }
 
 let horario: any = null;
@@ -43,7 +84,22 @@ try {
 
 if (!horario) return Astro.redirect('/app/horarios');
 
-const confirmadas = (horario.reservas ?? []).filter((r: any) => r.estado !== 'cancelada');
+const horarioTourLanguage =
+  getHorarioTourLanguage(horario);
+
+const reservasActivas = (horario.reservas ?? []).filter(
+  (r: any) => r.estado !== 'cancelada',
+);
+
+const reservasCanceladas = (horario.reservas ?? []).filter(
+  (r: any) => r.estado === 'cancelada',
+);
+
+const cupoMinimoSeguro = Math.max(
+  1,
+  Number(horario.cupoOcupado || 0),
+  Number(horario.paxTotal || 0),
+);
 ---
 
 <AppShell title={`Horario ${horario.fecha} ${horario.hora}`} user={user}>
@@ -70,7 +126,21 @@ const confirmadas = (horario.reservas ?? []).filter((r: any) => r.estado !== 'ca
           <span class="field-value">{new Date(horario.fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}</span>
         </div>
         <div class="field-row"><span class="field-label">Hora</span><span class="field-value">{horario.hora}</span></div>
-        <div class="field-row"><span class="field-label">Idioma</span><span class="field-value">{horario.recurrencia?.idioma?.toUpperCase() ?? '—'}</span></div>
+        <div class="field-row">
+          <span class="field-label">
+            Idioma del tour
+          </span>
+
+          <span class="field-value">
+            {horarioTourLanguage
+              ? (
+                <TourLanguageBadge
+                  code={horarioTourLanguage}
+                />
+              )
+              : '—'}
+          </span>
+        </div>
         <div class="field-row"><span class="field-label">Cupo máximo</span><span class="field-value">{horario.cupoMaximo ?? '—'}</span></div>
         <div class="field-row"><span class="field-label">Cupo libre</span><span class="field-value">{horario.cupoLibre ?? '—'}</span></div>
         <div class="field-row"><span class="field-label">Total personas</span><span class="field-value"><strong>{horario.paxTotal ?? 0}</strong></span></div>
@@ -93,7 +163,14 @@ const confirmadas = (horario.reservas ?? []).filter((r: any) => r.estado !== 'ca
             <form method="POST" class="cupo-form">
               <input type="hidden" name="_action" value="cupo" />
               <div class="cupo-row">
-                <input type="number" name="cupoMaximo" value={horario.cupoMaximo ?? 25} min="1" max="200" class="cupo-input" />
+                <input
+                  type="number"
+                  name="cupoMaximo"
+                  value={horario.cupoMaximo ?? 25}
+                  min={cupoMinimoSeguro}
+                  max="200"
+                  class="cupo-input"
+                />
                 <button type="submit" class="btn-cupo">Actualizar cupo</button>
               </div>
             </form>
@@ -104,10 +181,22 @@ const confirmadas = (horario.reservas ?? []).filter((r: any) => r.estado !== 'ca
 
     <div class="col-right">
       <div class="card">
-        <h2 class="card-title">Reservas confirmadas ({confirmadas.length})</h2>
-        {confirmadas.length === 0 && <p class="empty-msg">Sin reservas confirmadas.</p>}
+        <h2 class="card-title">Reservas activas ({reservasActivas.length})</h2>
+
+        {reservasCanceladas.length > 0 && (
+          <div class="alert-warning">
+            Este horario conserva {reservasCanceladas.length}
+            {' '}reserva(s) cancelada(s) vinculada(s).
+            Por seguridad no puede eliminarse; puede cerrarse.
+          </div>
+        )}
+
+        {reservasActivas.length === 0 && (
+          <p class="empty-msg">Sin reservas activas.</p>
+        )}
+
         <div class="reservas-list">
-          {confirmadas.map((r: any) => (
+          {reservasActivas.map((r: any) => (
             <div class="reserva-row">
               <div class="reserva-info">
                 <span class="reserva-nombre">{r.nombre} {r.apellidos ?? ''}</span>
@@ -115,6 +204,17 @@ const confirmadas = (horario.reservas ?? []).filter((r: any) => r.estado !== 'ca
                   <span class="pax-count">{(r.adultos||0)+(r.ninos||0)} pax</span>
                   <span class={`badge-mini badge-${r.plataforma_origen ?? 'web'}`}>{r.plataforma_origen ?? 'web'}</span>
                   <span class={`badge-mini estado-${r.estado}`}>{r.estado}</span>
+
+                  {(r.idioma_tour || horarioTourLanguage) && (
+                    <TourLanguageBadge
+                      code={
+                        r.idioma_tour
+                        || horarioTourLanguage
+                      }
+                      compact
+                    />
+                  )}
+
                   {r.resena_enviada && <span class="resena-ok" title="Reseña enviada">★</span>}
                 </div>
                 {r.email && (
@@ -143,6 +243,7 @@ const confirmadas = (horario.reservas ?? []).filter((r: any) => r.estado !== 'ca
   .estado-cerrado { background: #fee2e2; color: #991b1b; }
   .alert-success { background: #f0fdf4; border: 1px solid #86efac; color: #166534; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.25rem; font-size: 0.875rem; }
   .alert-error   { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.25rem; font-size: 0.875rem; }
+  .alert-warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 0.7rem 0.8rem; border-radius: 8px; margin-bottom: 0.75rem; font-size: 0.82rem; line-height: 1.5; }
   .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
   @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }
   .col-left, .col-right { display: flex; flex-direction: column; gap: 1.25rem; }

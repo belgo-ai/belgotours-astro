@@ -1,0 +1,1048 @@
+---
+export const prerender = false;
+
+import AppShell from '../../../components/app/layout/AppShell.astro';
+import TourLanguageBadge from '../../../components/app/shared/TourLanguageBadge.astro';
+import { crmApi } from '../../../lib/app/apiClient';
+import { can } from '../../../lib/app/permissions';
+import type {
+  EstadoSolicitudPrivada,
+  PrivateRequest,
+} from '../../../lib/app/types';
+
+const user = Astro.locals.user;
+const id = Number(Astro.params.id);
+
+if (!can(user.role, 'private_requests', 'read')) {
+  return Astro.redirect('/app');
+}
+
+if (!Number.isInteger(id) || id <= 0) {
+  return Astro.redirect('/app/solicitudes-privadas');
+}
+
+const canEdit =
+  can(user.role, 'private_requests', 'write');
+
+let successMsg = '';
+let errorMsg = '';
+
+async function loadPrivateRequest():
+  Promise<PrivateRequest> {
+  const response =
+    await crmApi.privateRequest(
+      user,
+      id,
+    );
+
+  return response.data;
+}
+
+let requestData: PrivateRequest;
+
+try {
+  requestData =
+    await loadPrivateRequest();
+} catch {
+  return Astro.redirect(
+    '/app/solicitudes-privadas',
+  );
+}
+
+if (
+  Astro.request.method === 'POST'
+  && canEdit
+) {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') || '');
+
+  try {
+    if (action === 'update') {
+      const estado = String(
+        form.get('estado') || 'recibida',
+      );
+
+      const body: Record<string, unknown> = {
+        estado,
+        telefono: String(
+          form.get('telefono') || '',
+        ),
+        idioma_tour: String(
+          form.get('idioma_tour') || 'es',
+        ),
+        adultos: Number(
+          form.get('adultos') || 0,
+        ),
+        ninos: Number(
+          form.get('ninos') || 0,
+        ),
+        moneda: String(
+          form.get('moneda') || 'EUR',
+        ),
+        notas_internas: String(
+          form.get('notas_internas') || '',
+        ),
+      };
+
+      const confirmedDateTime = String(
+        form.get('fecha_hora_confirmada') || '',
+      ).trim();
+
+      const confirmedPrice = String(
+        form.get('precio_confirmado') || '',
+      ).trim();
+
+      if (confirmedDateTime) {
+        body.fecha_hora_confirmada =
+          confirmedDateTime;
+      }
+
+      if (confirmedPrice !== '') {
+        body.precio_confirmado =
+          Number(confirmedPrice);
+      }
+
+      await crmApi.privateRequestUpdate(
+        user,
+        id,
+        body,
+      );
+
+      successMsg =
+        'Solicitud actualizada correctamente.';
+    }
+
+    if (action === 'convert') {
+      const result =
+        await crmApi.privateRequestConvert(
+          user,
+          id,
+        );
+
+      successMsg =
+        result.created
+          ? 'Solicitud convertida en reserva.'
+          : 'La solicitud ya estaba convertida.';
+    }
+
+    if (action === 'mark_realized') {
+      await crmApi.privateRequestUpdate(
+        user,
+        id,
+        {
+          estado: 'realizada',
+        },
+      );
+
+      successMsg =
+        'Tour privado marcado como realizado.';
+    }
+
+    if (action === 'send_review') {
+      const linkedReservation =
+        requestData.reserva_convertida;
+
+      if (
+        !linkedReservation
+        || !Number.isInteger(
+          Number(linkedReservation.id),
+        )
+        || Number(linkedReservation.id) <= 0
+      ) {
+        throw new Error(
+          'La solicitud no tiene una reserva vinculada válida.',
+        );
+      }
+
+      if (
+        linkedReservation.booking_mode !== 'request'
+        || linkedReservation.review_mode !== 'manual'
+        || requestData.estado !== 'realizada'
+        || linkedReservation.resena_enviada
+      ) {
+        throw new Error(
+          'La reserva vinculada no cumple las condiciones para enviar la reseña manual.',
+        );
+      }
+
+      await crmApi.sendReview(
+        user,
+        Number(linkedReservation.id),
+      );
+
+      successMsg =
+        'Email de reseña enviado correctamente.';
+    }
+
+    requestData =
+      await loadPrivateRequest();
+  } catch (error) {
+    errorMsg =
+      error instanceof Error
+        ? error.message
+        : 'No se pudo completar la operación.';
+  }
+}
+
+const states: EstadoSolicitudPrivada[] = [
+  'recibida',
+  'contactada',
+  'confirmada',
+  'realizada',
+  'cancelada',
+  'rechazada',
+];
+
+const reservation =
+  requestData.reserva_convertida || null;
+
+const pax =
+  Number(requestData.adultos || 0)
+  + Number(requestData.ninos || 0);
+
+function toBrusselsDateTimeLocal(
+  value?: string | null,
+): string {
+  if (!value) return '';
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const parts = new Intl.DateTimeFormat(
+    'sv-SE',
+    {
+      timeZone: 'Europe/Brussels',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    },
+  ).formatToParts(date);
+
+  const values = Object.fromEntries(
+    parts.map((part) => [
+      part.type,
+      part.value,
+    ]),
+  );
+
+  return (
+    `${values.year}-${values.month}-${values.day}`
+    + `T${values.hour}:${values.minute}`
+  );
+}
+
+function formatDateTime(
+  value?: string | null,
+): string {
+  if (!value) return '—';
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+
+  return new Intl.DateTimeFormat('es-BE', {
+    timeZone: 'Europe/Brussels',
+    dateStyle: 'full',
+    timeStyle: 'short',
+  }).format(date);
+}
+---
+
+<AppShell
+  title={`Solicitud privada #${id}`}
+  user={user}
+>
+  <div class="page-top">
+    <div class="breadcrumb">
+      <a href="/app/solicitudes-privadas">
+        ← Solicitudes privadas
+      </a>
+      <span>Solicitud #{id}</span>
+    </div>
+
+    <span class={`status status-${requestData.estado}`}>
+      {requestData.estado}
+    </span>
+  </div>
+
+  {successMsg && (
+    <div class="alert-success">
+      {successMsg}
+    </div>
+  )}
+
+  {errorMsg && (
+    <div class="alert-error">
+      {errorMsg}
+    </div>
+  )}
+
+  <div class="detail-grid">
+    <div class="column">
+      <section class="card">
+        <h2 class="card-title">Cliente</h2>
+
+        <div class="field-row">
+          <span class="field-label">Nombre</span>
+          <span class="field-value">
+            {requestData.nombre}
+            {' '}
+            {requestData.apellidos || ''}
+          </span>
+        </div>
+
+        <div class="field-row">
+          <span class="field-label">Email</span>
+          <a
+            href={`mailto:${requestData.email}`}
+            class="field-link"
+          >
+            {requestData.email}
+          </a>
+        </div>
+
+        <div class="field-row">
+          <span class="field-label">WhatsApp</span>
+
+          {requestData.telefono
+            ? (
+              <a
+                href={`https://wa.me/${requestData.telefono.replace(/\D/g, '')}`}
+                target="_blank"
+                rel="noopener"
+                class="field-link field-wa"
+              >
+                {requestData.telefono}
+              </a>
+            )
+            : <span class="field-value">—</span>}
+        </div>
+
+        <div class="field-row">
+          <span class="field-label">
+            Correo de recepción
+          </span>
+          <span class="field-value">
+            {requestData.email_recepcion_enviado
+              ? '✓ Enviado'
+              : 'No confirmado'}
+          </span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">
+          Preferencias solicitadas
+        </h2>
+
+        <div class="field-row">
+          <span class="field-label">Tour</span>
+          <span class="field-value">
+            {requestData.tour?.titulo || '—'}
+          </span>
+        </div>
+
+        <div class="field-row">
+          <span class="field-label">
+            Idioma del tour
+          </span>
+
+          <TourLanguageBadge
+            code={requestData.idioma_tour}
+          />
+        </div>
+
+        <div class="field-row">
+          <span class="field-label">
+            Fecha preferida
+          </span>
+          <span class="field-value">
+            {requestData.fecha_preferida}
+          </span>
+        </div>
+
+        <div class="field-row">
+          <span class="field-label">
+            Hora preferida
+          </span>
+          <span class="field-value">
+            {requestData.hora_preferida}
+          </span>
+        </div>
+
+        <div class="field-row">
+          <span class="field-label">
+            Participantes
+          </span>
+          <span class="field-value">
+            {requestData.adultos} adultos
+            {' + '}
+            {requestData.ninos} niños
+            {' = '}
+            <strong>{pax}</strong>
+          </span>
+        </div>
+
+        <div class="field-row">
+          <span class="field-label">
+            Mensaje
+          </span>
+          <span class="field-value field-multiline">
+            {requestData.mensaje || '—'}
+          </span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">
+          Confirmación final
+        </h2>
+
+        <div class="field-row">
+          <span class="field-label">
+            Fecha y hora confirmadas
+          </span>
+          <span class="field-value">
+            {formatDateTime(
+              requestData.fecha_hora_confirmada,
+            )}
+          </span>
+        </div>
+
+        <div class="field-row">
+          <span class="field-label">
+            Precio confirmado
+          </span>
+          <span class="field-value">
+            {requestData.precio_confirmado !== null
+              && requestData.precio_confirmado !== undefined
+              ? `${requestData.precio_confirmado} ${requestData.moneda || 'EUR'}`
+              : 'Pendiente'}
+          </span>
+        </div>
+
+        <div class="field-row">
+          <span class="field-label">
+            Modos
+          </span>
+          <span class="field-value">
+            request / manual
+          </span>
+        </div>
+      </section>
+
+      {reservation && (
+        <section class="card card-reservation">
+          <h2 class="card-title">
+            Reserva convertida
+          </h2>
+
+          <div class="field-row">
+            <span class="field-label">Reserva</span>
+            <a
+              href={`/app/reservas/${reservation.id}`}
+              class="field-link"
+            >
+              #{reservation.id}
+            </a>
+          </div>
+
+          <div class="field-row">
+            <span class="field-label">Fecha</span>
+            <span class="field-value">
+              {formatDateTime(
+                reservation.fecha_hora_tour,
+              )}
+            </span>
+          </div>
+
+          <div class="field-row">
+            <span class="field-label">Reseña</span>
+            <span class="field-value">
+              {reservation.resena_enviada
+                ? '✓ Enviada'
+                : 'Pendiente'}
+            </span>
+          </div>
+        </section>
+      )}
+    </div>
+
+    <div class="column">
+      {canEdit && (
+        <section class="card">
+          <h2 class="card-title">
+            Gestionar solicitud
+          </h2>
+
+          <form method="POST">
+            <input
+              type="hidden"
+              name="_action"
+              value="update"
+            />
+
+            <div class="form-field">
+              <label for="estado">Estado</label>
+
+              <select id="estado" name="estado">
+                {states.map((state) => (
+                  <option
+                    value={state}
+                    selected={requestData.estado === state}
+                    disabled={
+                      state === 'realizada'
+                      && !reservation
+                    }
+                  >
+                    {state}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="fecha_hora_confirmada">
+                  Fecha y hora confirmadas
+                  <span>Europe/Brussels</span>
+                </label>
+
+                <input
+                  id="fecha_hora_confirmada"
+                  name="fecha_hora_confirmada"
+                  type="datetime-local"
+                  value={toBrusselsDateTimeLocal(
+                    requestData.fecha_hora_confirmada,
+                  )}
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="precio_confirmado">
+                  Precio confirmado
+                </label>
+
+                <input
+                  id="precio_confirmado"
+                  name="precio_confirmado"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={
+                    requestData.precio_confirmado
+                    ?? ''
+                  }
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="moneda">Moneda</label>
+
+                <input
+                  id="moneda"
+                  name="moneda"
+                  type="text"
+                  minlength="3"
+                  maxlength="3"
+                  value={requestData.moneda || 'EUR'}
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="idioma_tour">
+                  Idioma del tour
+                </label>
+
+                <select
+                  id="idioma_tour"
+                  name="idioma_tour"
+                >
+                  <option
+                    value="es"
+                    selected={requestData.idioma_tour === 'es'}
+                  >
+                    🇪🇸 ES
+                  </option>
+
+                  <option
+                    value="en"
+                    selected={requestData.idioma_tour === 'en'}
+                  >
+                    🇬🇧 EN
+                  </option>
+
+                  <option
+                    value="it"
+                    selected={requestData.idioma_tour === 'it'}
+                  >
+                    🇮🇹 IT
+                  </option>
+
+                  <option
+                    value="fr"
+                    selected={requestData.idioma_tour === 'fr'}
+                  >
+                    🇫🇷 FR
+                  </option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label for="adultos">Adultos</label>
+                <input
+                  id="adultos"
+                  name="adultos"
+                  type="number"
+                  min="0"
+                  max="200"
+                  value={requestData.adultos}
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="ninos">Niños</label>
+                <input
+                  id="ninos"
+                  name="ninos"
+                  type="number"
+                  min="0"
+                  max="200"
+                  value={requestData.ninos}
+                />
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label for="telefono">
+                WhatsApp o teléfono
+              </label>
+
+              <input
+                id="telefono"
+                name="telefono"
+                type="text"
+                value={requestData.telefono || ''}
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="notas_internas">
+                Notas internas
+              </label>
+
+              <textarea
+                id="notas_internas"
+                name="notas_internas"
+                rows="5"
+              >
+                {requestData.notas_internas || ''}
+              </textarea>
+            </div>
+
+            <p class="form-help">
+              Para confirmar la solicitud debes indicar
+              fecha, hora y precio definitivos.
+            </p>
+
+            <button
+              type="submit"
+              class="btn-primary"
+            >
+              Guardar cambios
+            </button>
+          </form>
+        </section>
+      )}
+
+      {canEdit
+        && requestData.estado === 'confirmada'
+        && !reservation
+        && (
+          <section class="card card-action">
+            <h2 class="card-title">
+              Convertir en reserva
+            </h2>
+
+            <p>
+              La conversión crea una reserva privada
+              con modos <strong>request/manual</strong>
+              y no ocupa un horario público.
+            </p>
+
+            <form method="POST">
+              <input
+                type="hidden"
+                name="_action"
+                value="convert"
+              />
+
+              <button
+                type="submit"
+                class="btn-primary"
+              >
+                Convertir en reserva
+              </button>
+            </form>
+          </section>
+        )}
+
+      {canEdit
+        && reservation
+        && requestData.estado !== 'realizada'
+        && !['cancelada', 'rechazada'].includes(
+          requestData.estado,
+        )
+        && (
+          <section class="card card-action">
+            <h2 class="card-title">
+              Finalización del tour
+            </h2>
+
+            <p>
+              Marca el tour como realizado únicamente
+              después de que la visita haya sucedido.
+            </p>
+
+            <form method="POST">
+              <input
+                type="hidden"
+                name="_action"
+                value="mark_realized"
+              />
+
+              <button
+                type="submit"
+                class="btn-secondary"
+              >
+                Marcar como realizado
+              </button>
+            </form>
+          </section>
+        )}
+
+      {canEdit
+        && reservation
+        && reservation.booking_mode === 'request'
+        && reservation.review_mode === 'manual'
+        && requestData.estado === 'realizada'
+        && !reservation.resena_enviada
+        && (
+          <section class="card card-review">
+            <h2 class="card-title">
+              Reseña manual
+            </h2>
+
+            <p>
+              El tour está realizado. Ya se puede enviar
+              manualmente la solicitud de reseña.
+            </p>
+
+            <form method="POST">
+              <input
+                type="hidden"
+                name="_action"
+                value="send_review"
+              />
+
+              <button
+                type="submit"
+                class="btn-review"
+              >
+                Enviar email de reseña
+              </button>
+            </form>
+          </section>
+        )}
+
+      {reservation?.resena_enviada && (
+        <section class="card card-success">
+          <h2 class="card-title">
+            Reseña enviada
+          </h2>
+
+          <p>
+            El email de reseña ya fue enviado. No se
+            ofrece un segundo envío automático.
+          </p>
+        </section>
+      )}
+    </div>
+  </div>
+</AppShell>
+
+<style>
+  .page-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .breadcrumb a {
+    color: #2563eb;
+    text-decoration: none;
+  }
+
+  .breadcrumb span {
+    color: #6b7280;
+  }
+
+  .status {
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .status-recibida {
+    background: #eff6ff;
+    color: #1e40af;
+  }
+
+  .status-contactada {
+    background: #f3e8ff;
+    color: #6b21a8;
+  }
+
+  .status-confirmada {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .status-realizada {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .status-cancelada,
+  .status-rechazada {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  .alert-success,
+  .alert-error {
+    margin-bottom: 1.25rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+  }
+
+  .alert-success {
+    border: 1px solid #86efac;
+    background: #f0fdf4;
+    color: #166534;
+  }
+
+  .alert-error {
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+    white-space: pre-wrap;
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+
+  @media (max-width: 900px) {
+    .detail-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .column {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .card {
+    padding: 1.25rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+  }
+
+  .card-title {
+    margin-bottom: 1rem;
+    color: #6b7280;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .card p {
+    margin-bottom: 1rem;
+    color: #4b5563;
+    font-size: 0.85rem;
+    line-height: 1.55;
+  }
+
+  .card-reservation {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+  }
+
+  .card-review {
+    border-color: #fde68a;
+    background: #fffbeb;
+  }
+
+  .card-success {
+    border-color: #86efac;
+    background: #f0fdf4;
+  }
+
+  .field-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .field-row:last-child {
+    border-bottom: 0;
+  }
+
+  .field-label {
+    flex-shrink: 0;
+    color: #6b7280;
+    font-size: 0.8rem;
+  }
+
+  .field-value,
+  .field-link {
+    color: #111827;
+    font-size: 0.875rem;
+    text-align: right;
+  }
+
+  .field-link {
+    color: #2563eb;
+    text-decoration: none;
+  }
+
+  .field-wa:hover {
+    color: #16a34a;
+  }
+
+  .field-multiline {
+    max-width: 65%;
+    white-space: pre-wrap;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 0.75rem;
+  }
+
+  @media (max-width: 640px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .form-field {
+    margin-bottom: 1rem;
+  }
+
+  .form-field label {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: #6b7280;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .form-field label span {
+    display: block;
+    margin-top: 0.15rem;
+    color: #9ca3af;
+    font-size: 0.65rem;
+    font-weight: 400;
+    text-transform: none;
+  }
+
+  .form-field input,
+  .form-field select,
+  .form-field textarea {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    background: #fff;
+    color: #111827;
+    font-size: 0.875rem;
+  }
+
+  .form-help {
+    padding: 0.65rem;
+    border-radius: 7px;
+    background: #f9fafb;
+    color: #6b7280 !important;
+    font-size: 0.76rem !important;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-review {
+    width: 100%;
+    padding: 0.65rem 1rem;
+    border: 0;
+    border-radius: 7px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
+  .btn-primary {
+    background: #2563eb;
+  }
+
+  .btn-primary:hover {
+    background: #1d4ed8;
+  }
+
+  .btn-secondary {
+    background: #374151;
+  }
+
+  .btn-secondary:hover {
+    background: #1f2937;
+  }
+
+  .btn-review {
+    background: #d97706;
+  }
+
+  .btn-review:hover {
+    background: #b45309;
+  }
+</style>

@@ -1,5 +1,15 @@
 export type AppRole = 'super_admin' | 'operations_admin' | 'staff' | 'guide';
 
+export type TourLanguageCode =
+  | 'es'
+  | 'en'
+  | 'it'
+  | 'fr'
+  | 'de'
+  | 'pt'
+  | 'nl'
+  | (string & {});
+
 export interface AppUser {
   id: number;
   email: string;
@@ -20,6 +30,8 @@ export interface Tour {
   punto_encuentro: string;
   rating: number;
   locale: string;
+  booking_mode?: 'direct' | 'request';
+  review_mode?: 'auto' | 'manual';
 }
 
 export interface Guia {
@@ -38,8 +50,13 @@ export interface Horario {
   cupoOcupado: number;
   disponible: boolean;
   cupoLibre?: number;
+  paxTotal?: number;
+  idioma_tour?: TourLanguageCode;
   tour: Tour;
-  recurrencia?: { id: number; idioma: string };
+  recurrencia?: {
+    id: number;
+    idioma: TourLanguageCode;
+  };
   reservas?: Reserva[];
 }
 
@@ -64,9 +81,11 @@ export interface Reserva {
   telefono?: string;
   ciudad?: string;
   pais?: string;
-  idioma_cliente: 'es' | 'en' | 'it';
-  idioma_tour: 'es' | 'en' | 'it';
+  idioma_cliente: TourLanguageCode;
+  idioma_tour: TourLanguageCode;
   tipo_tour: 'free' | 'privado' | 'especial';
+  booking_mode: 'direct' | 'request';
+  review_mode: 'auto' | 'manual';
   fecha_hora_tour: string;
   adultos: number;
   ninos: number;
@@ -88,6 +107,49 @@ export interface Reserva {
   tour: Tour;
   guia?: Guia;
   horario?: { id: number; fecha: string; hora: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type EstadoSolicitudPrivada =
+  | 'recibida'
+  | 'contactada'
+  | 'confirmada'
+  | 'realizada'
+  | 'cancelada'
+  | 'rechazada';
+
+export interface PrivateRequestReservation {
+  id: number;
+  estado: EstadoReserva;
+  fecha_hora_tour: string;
+  resena_enviada: boolean;
+  booking_mode: 'request';
+  review_mode: 'manual';
+}
+
+export interface PrivateRequest {
+  id: number;
+  nombre: string;
+  apellidos?: string | null;
+  email: string;
+  telefono?: string | null;
+  fecha_preferida: string;
+  hora_preferida: string;
+  adultos: number;
+  ninos: number;
+  idioma_tour: TourLanguageCode;
+  mensaje?: string | null;
+  estado: EstadoSolicitudPrivada;
+  tour: Tour;
+  reserva_convertida?: PrivateRequestReservation | null;
+  fecha_hora_confirmada?: string | null;
+  precio_confirmado?: number | string | null;
+  moneda?: string | null;
+  notas_internas?: string | null;
+  email_recepcion_enviado: boolean;
+  booking_mode_snapshot: 'request';
+  review_mode_snapshot: 'manual';
   createdAt: string;
   updatedAt: string;
 }

@@ -1,7 +1,10 @@
 ---
 export const prerender = false;
 import AppShell from '../../../components/app/layout/AppShell.astro';
+import TourLanguageBadge from '../../../components/app/shared/TourLanguageBadge.astro';
 import { crmApi } from '../../../lib/app/apiClient';
+import { TOUR_LANGUAGE_OPTIONS } from '../../../lib/app/language';
+import { formatBusinessDateTime } from '../../../lib/app/businessTime';
 import { can } from '../../../lib/app/permissions';
 
 const user = Astro.locals.user;
@@ -48,8 +51,13 @@ const plataformaColor: Record<string, string> = {
     <input type="date" name="fecha_hasta" value={p.get('fecha_hasta') ?? ''} placeholder="Hasta" title="Hasta" />
     <select name="idioma_tour">
       <option value="">Idioma</option>
-      {['es','en','it'].map(i => (
-        <option value={i} selected={p.get('idioma_tour') === i}>{i.toUpperCase()}</option>
+      {TOUR_LANGUAGE_OPTIONS.map(language => (
+        <option
+          value={language.code}
+          selected={p.get('idioma_tour') === language.code}
+        >
+          {language.flag} {language.label}
+        </option>
       ))}
     </select>
     <select name="estado">
@@ -93,15 +101,37 @@ const plataformaColor: Record<string, string> = {
           </tr>
         )}
         {result.data.map((r: any) => {
-          const fechaTour = new Date(r.fecha_hora_tour);
-          const paxTotal  = (r.adultos || 0) + (r.ninos || 0);
+          const fechaTour = formatBusinessDateTime(
+            r.fecha_hora_tour,
+            {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+            },
+          );
+
+          const horaTour = formatBusinessDateTime(
+            r.fecha_hora_tour,
+            {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            },
+          );
+
+          const paxTotal =
+            (r.adultos || 0)
+            + (r.ninos || 0);
           return (
             <tr>
-              <td>{fechaTour.toLocaleDateString('es-ES')}</td>
-              <td class="td-hora">{fechaTour.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</td>
+              <td>{fechaTour}</td>
+              <td class="td-hora">{horaTour}</td>
               <td>
                 <span class="tour-titulo">{r.tour?.titulo ?? '—'}</span>
-                <span class="tour-idioma">{r.idioma_tour?.toUpperCase()}</span>
+                <TourLanguageBadge
+                  code={r.idioma_tour}
+                  compact
+                />
               </td>
               <td>
                 <span class="cliente-nombre">{r.nombre} {r.apellidos ?? ''}</span>

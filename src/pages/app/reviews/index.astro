@@ -1,6 +1,7 @@
 ---
 export const prerender = false;
 import AppShell from '../../../components/app/layout/AppShell.astro';
+import TourLanguageBadge from '../../../components/app/shared/TourLanguageBadge.astro';
 import { crmApi } from '../../../lib/app/apiClient';
 import { can } from '../../../lib/app/permissions';
 
@@ -80,7 +81,10 @@ function estrellas(n: number) {
             <span class="review-autor">{r.cliente_nombre}</span>
             {r.cliente_pais && <span class="review-info">{r.cliente_pais}</span>}
             <span class="review-info">{new Date(r.fecha_tour).toLocaleDateString('es-ES')}</span>
-            <span class="lang-badge">{r.idioma?.toUpperCase()}</span>
+            <TourLanguageBadge
+              code={r.idioma}
+              compact
+            />
             {r.tour?.titulo && <span class="tour-badge">{r.tour.titulo}</span>}
           </div>
           <div class="review-badges">
@@ -205,7 +209,6 @@ function estrellas(n: number) {
   .review-meta  { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
   .review-autor { font-weight: 700; color: #111827; font-size: 0.9rem; }
   .review-info  { font-size: 0.78rem; color: #9ca3af; }
-  .lang-badge   { font-size: 0.7rem; background: #eff6ff; color: #1d4ed8; padding: 0.1rem 0.35rem; border-radius: 4px; font-weight: 600; }
   .tour-badge   { font-size: 0.75rem; color: #6b7280; background: #f3f4f6; padding: 0.1rem 0.5rem; border-radius: 4px; }
   .review-badges { display: flex; gap: 0.35rem; flex-shrink: 0; flex-wrap: wrap; }
   .badge        { font-size: 0.72rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 999px; }

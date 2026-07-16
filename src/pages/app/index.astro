@@ -1,7 +1,10 @@
 ---
 export const prerender = false;
 import AppShell from '../../components/app/layout/AppShell.astro';
+import TourLanguageBadge from '../../components/app/shared/TourLanguageBadge.astro';
 import { crmApi } from '../../lib/app/apiClient';
+import { businessToday, formatBusinessDate } from '../../lib/app/businessTime';
+import { getHorarioTourLanguage } from '../../lib/app/language';
 
 const user = Astro.locals.user;
 
@@ -20,9 +23,14 @@ try {
   errorMsg = 'Error cargando datos. Verifica la conexión con Strapi.';
 }
 
-const hoy = new Date().toLocaleDateString('es-ES', {
-  weekday: 'long', day: 'numeric', month: 'long'
-});
+const hoy = formatBusinessDate(
+  businessToday(),
+  {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  },
+);
 ---
 
 <AppShell title="Dashboard" user={user}>
@@ -92,8 +100,20 @@ const hoy = new Date().toLocaleDateString('es-ES', {
               {h.disponible ? 'Abierto' : 'Cerrado'}
             </span>
           </div>
-          <p class="horario-tour">{h.tour?.titulo ?? '—'}</p>
-          <p class="horario-ciudad">{h.tour?.ciudad ?? ''}</p>
+          <p class="horario-tour">
+            {h.tour?.titulo ?? '—'}
+          </p>
+
+          {getHorarioTourLanguage(h) && (
+            <TourLanguageBadge
+              code={getHorarioTourLanguage(h)}
+              compact
+            />
+          )}
+
+          <p class="horario-ciudad">
+            {h.tour?.ciudad ?? ''}
+          </p>
           <div class="horario-cupo">
             <span>{(h.reservas ?? []).length} reservas</span>
             <span>{h.cupoLibre ?? 0} libres / {h.cupoMaximo ?? 0}</span>

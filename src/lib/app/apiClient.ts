@@ -1,4 +1,4 @@
-import type { AppUser, DashboardStats, Horario, Reserva, Review, MailJob, StrapiList, StrapiSingle } from './types';
+import type { AppUser, DashboardStats, Horario, Reserva, Review, MailJob, PrivateRequest, StrapiList, StrapiSingle } from './types';
 
 const STRAPI_URL = import.meta.env.STRAPI_URL;
 
@@ -61,6 +61,36 @@ export const crmApi = {
 
   sendReview: (user: AppUser, id: number) =>
     crmFetch<{ ok: boolean }>(`/reservas/${id}/send-review`, user, { method: 'POST' }),
+
+  privateRequests: (user: AppUser, filters?: Params) =>
+    crmFetch<StrapiList<PrivateRequest>>('/private-requests', user, {
+      params: filters,
+    }),
+
+  privateRequest: (user: AppUser, id: number) =>
+    crmFetch<StrapiSingle<PrivateRequest>>(`/private-requests/${id}`, user),
+
+  privateRequestUpdate: (
+    user: AppUser,
+    id: number,
+    body: Record<string, unknown>,
+  ) =>
+    crmFetch<StrapiSingle<PrivateRequest>>(`/private-requests/${id}`, user, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
+  privateRequestConvert: (user: AppUser, id: number) =>
+    crmFetch<{
+      ok: boolean;
+      created: boolean;
+      data: {
+        solicitud: PrivateRequest;
+        reserva: PrivateRequest['reserva_convertida'];
+      };
+    }>(`/private-requests/${id}/convert`, user, {
+      method: 'POST',
+    }),
 
   horarios: (user: AppUser, filters?: Params) =>
     crmFetch<{ data: Horario[] }>('/horarios', user, { params: filters }),

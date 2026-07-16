@@ -1,12 +1,29 @@
 ---
 export const prerender = false;
 import AppShell from '../../../components/app/layout/AppShell.astro';
+import TourLanguageBadge from '../../../components/app/shared/TourLanguageBadge.astro';
 import { crmFetch } from '../../../lib/app/apiClient';
 import { can } from '../../../lib/app/permissions';
+import { businessToday } from '../../../lib/app/businessTime';
+import { TOUR_LANGUAGE_OPTIONS } from '../../../lib/app/language';
 
-const user    = Astro.locals.user;
-const p       = Astro.url.searchParams;
-const idiomaRec = p.get('idioma_rec') || 'es';
+const user = Astro.locals.user;
+const p = Astro.url.searchParams;
+
+const requestedLanguage =
+  String(p.get('idioma_rec') || 'es')
+    .trim()
+    .toLowerCase();
+
+const idiomaRec =
+  TOUR_LANGUAGE_OPTIONS.some(
+    (language) =>
+      language.code === requestedLanguage,
+  )
+    ? requestedLanguage
+    : 'es';
+
+const todayBusiness = businessToday();
 if (!can(user.role, 'recurrencias', 'read')) return Astro.redirect('/app');
 const canEdit = can(user.role, 'recurrencias', 'write');
 
@@ -34,16 +51,46 @@ if (Astro.request.method === 'POST' && canEdit) {
         tour_id:      form.get('tour_id'),
       };
       await crmFetch('/recurrencias', user, { method: 'POST', body: JSON.stringify(body) });
-      successMsg = '✅ Recurrencia creada. Los horarios se generarán automáticamente.';
+      successMsg = '✅ Recurrencia creada. Se generaron automáticamente únicamente los horarios futuros que no existían.';
     }
     if (action === 'generar') {
       const recId = form.get('recurrencia_id');
       const res   = await crmFetch<any>(`/recurrencias/${recId}/generar`, user, { method: 'POST' });
-      successMsg  = `✅ Generados ${res.generados} horarios nuevos. ${res.saltados} ya existían (no duplicados).`;
+
+      const generados          = Number(res?.generados ?? 0);
+      const saltados           = Number(res?.saltados ?? 0);
+      const historicosOmitidos = Number(res?.historicosOmitidos ?? 0);
+      const invalidos          = Number(res?.invalidos ?? 0);
+
+      const detalles = [
+        `${generados} horarios futuros nuevos`,
+        `${saltados} ya existentes`,
+      ];
+
+      if (historicosOmitidos > 0) {
+        detalles.push(`${historicosOmitidos} históricos omitidos`);
+      }
+
+      if (invalidos > 0) {
+        detalles.push(`${invalidos} horarios inválidos`);
+      }
+
+      successMsg = `✅ Generación aditiva completada: ${detalles.join(', ')}.`;
     }
     if (action === 'delete') {
-      await crmFetch(`/recurrencias/${form.get('recurrencia_id')}`, user, { method: 'DELETE' });
-      successMsg = '🗑️ Recurrencia eliminada. Los horarios generados anteriormente se mantienen.';
+      const res = await crmFetch<any>(
+        `/recurrencias/${form.get('recurrencia_id')}`,
+        user,
+        { method: 'DELETE' },
+      );
+
+      const eliminados = Number(res?.horariosEliminados ?? 0);
+      const preservados = Number(res?.preservados?.total ?? 0);
+
+      successMsg =
+        `🗑️ Recurrencia eliminada. ` +
+        `Se eliminaron ${eliminados} horarios futuros vacíos vinculados ` +
+        `y se conservaron ${preservados} horarios históricos, reservados o protegidos.`;
     }
     if (action === 'toggle') {
       const recId  = form.get('recurrencia_id');
@@ -111,15 +158,20 @@ for (const r of recurrencias) {
             <label>Idioma del tour *</label>
             <input type="hidden" name="idioma" value={idiomaRec} />
             <div class="idioma-btns-rec">
-              {[
-                {v:"es",l:"Español",f:"🇪🇸"},
-                {v:"en",l:"English",f:"🇬🇧"},
-                {v:"it",l:"Italiano",f:"🇮🇹"},
-                {v:"fr",l:"Français",f:"🇫🇷"},
-              ].map(i => (
-                <a href={`/app/horarios/recurrencias?idioma_rec=${i.v}`}
-                   class:list={["idioma-btn-rec", { "idioma-active-rec": idiomaRec === i.v }]}>
-                  <span>{i.f}</span> {i.l}
+              {TOUR_LANGUAGE_OPTIONS.map(language => (
+                <a
+                  href={`/app/horarios/recurrencias?idioma_rec=${language.code}`}
+                  class:list={[
+                    "idioma-btn-rec",
+                    {
+                      "idioma-active-rec":
+                        idiomaRec === language.code,
+                    },
+                  ]}
+                >
+                  <span>{language.flag}</span>
+                  {' '}
+                  {language.name}
                 </a>
               ))}
             </div>
@@ -148,11 +200,21 @@ for (const r of recurrencias) {
           <div class="form-row">
             <div class="form-field">
               <label>Fecha inicio *</label>
-              <input type="date" name="fechaInicio" required />
+              <input
+                type="date"
+                name="fechaInicio"
+                min={todayBusiness}
+                required
+              />
             </div>
             <div class="form-field">
               <label>Fecha fin *</label>
-              <input type="date" name="fechaFin" required />
+              <input
+                type="date"
+                name="fechaFin"
+                min={todayBusiness}
+                required
+              />
             </div>
             <div class="form-field">
               <label>Cupo máximo *</label>
@@ -194,8 +256,11 @@ for (const r of recurrencias) {
   <!-- Lista de recurrencias existentes -->
   <div class="info-box">
     <strong>¿Cómo funcionan las recurrencias?</strong>
-    Cada recurrencia genera horarios automáticamente para un rango de fechas.
-    Puedes tener múltiples recurrencias por tour. Los horarios ya generados nunca se eliminan al desactivar una recurrencia.
+    Al crear una recurrencia se generan automáticamente sus horarios futuros.
+    El botón <strong>Generar horarios</strong> solo añade horarios futuros que todavía no existen.
+    Desactivar es reversible y no elimina nada. Al eliminar una recurrencia, únicamente se borran
+    sus horarios futuros vacíos y sin reservas; los históricos, reservados, manuales y pertenecientes
+    a otras recurrencias se conservan.
   </div>
 
   {Array.from(porTour.entries()).map(([tourNombre, recs]) => (
@@ -213,7 +278,10 @@ for (const r of recurrencias) {
                   <span class="rec-fecha">{r.fechaFin}</span>
                 </div>
                 <div class="rec-badges">
-                  <span class={`badge-idioma idioma-${r.idioma}`}>{r.idioma?.toUpperCase()}</span>
+                  <TourLanguageBadge
+                    code={r.idioma}
+                    compact
+                  />
                   <span class:list={["badge-estado", r.activo ? "activo" : "inactivo"]}>
                     {r.activo ? "Activa" : "Inactiva"}
                   </span>
@@ -242,7 +310,16 @@ for (const r of recurrencias) {
                 <form method="POST">
                   <input type="hidden" name="_action" value="generar" />
                   <input type="hidden" name="recurrencia_id" value={r.id} />
-                  <button type="submit" class="btn-generar">⟳ Generar horarios</button>
+                  <button
+                    type="submit"
+                    class="btn-generar"
+                    disabled={!r.activo}
+                    title={r.activo
+                      ? "Añade únicamente horarios futuros que todavía no existen."
+                      : "Activa la recurrencia antes de generar horarios."}
+                  >
+                    {r.activo ? "⟳ Generar horarios" : "⟳ Activa para generar"}
+                  </button>
                 </form>
                 <form method="POST">
                   <input type="hidden" name="_action" value="toggle" />
@@ -252,7 +329,10 @@ for (const r of recurrencias) {
                     {r.activo ? "⏸ Desactivar" : "▶ Activar"}
                   </button>
                 </form>
-                <form method="POST" onsubmit="return confirm('¿Eliminar esta recurrencia? Los horarios futuros sin reservas se borrarán.')">
+                <form
+                  method="POST"
+                  onsubmit="return confirm('¿Eliminar esta recurrencia? Se eliminará la configuración y únicamente sus horarios futuros vacíos y sin reservas. Se conservarán los horarios históricos, reservados, manuales y de otras recurrencias.')"
+                >
                   <input type="hidden" name="_action" value="delete" />
                   <input type="hidden" name="recurrencia_id" value={r.id} />
                   <button type="submit" class="btn-delete">🗑 Eliminar</button>
@@ -269,6 +349,42 @@ for (const r of recurrencias) {
 
 <script>
   // Scroll automático al mensaje de éxito/error
+  const startInput =
+    document.querySelector<HTMLInputElement>(
+      'input[name="fechaInicio"]',
+    );
+
+  const endInput =
+    document.querySelector<HTMLInputElement>(
+      'input[name="fechaFin"]',
+    );
+
+  const syncDateRange = () => {
+    if (!startInput || !endInput) {
+      return;
+    }
+
+    const minimum =
+      startInput.value
+      || startInput.min;
+
+    endInput.min = minimum;
+
+    if (
+      endInput.value
+      && endInput.value < minimum
+    ) {
+      endInput.value = '';
+    }
+  };
+
+  startInput?.addEventListener(
+    'change',
+    syncDateRange,
+  );
+
+  syncDateRange();
+
   const msg = document.getElementById('msg-success');
   if (msg) {
     msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -314,7 +430,8 @@ for (const r of recurrencias) {
   .rec-cupo { font-size: 0.85rem; color: #374151; }
   .rec-actions { display: flex; gap: 0.5rem; padding-top: 0.875rem; border-top: 1px solid #f3f4f6; flex-wrap: wrap; }
   .btn-generar  { background: #2563eb; color: #fff; border: none; border-radius: 6px; padding: 0.4rem 0.875rem; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
-  .btn-generar:hover { background: #1d4ed8; }
+  .btn-generar:hover:not(:disabled) { background: #1d4ed8; }
+  .btn-generar:disabled { background: #9ca3af; color: #f9fafb; cursor: not-allowed; opacity: 0.75; }
   .btn-toggle   { border: none; border-radius: 6px; padding: 0.4rem 0.875rem; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
   .btn-desactivar { background: #f3f4f6; color: #374151; }
   .btn-activar    { background: #dcfce7; color: #166534; }

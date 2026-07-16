@@ -1,7 +1,9 @@
 ---
 export const prerender = false;
 import AppShell from '../../../components/app/layout/AppShell.astro';
+import TourLanguageBadge from '../../../components/app/shared/TourLanguageBadge.astro';
 import { crmApi } from '../../../lib/app/apiClient';
+import { TOUR_LANGUAGE_OPTIONS } from '../../../lib/app/language';
 import { can } from '../../../lib/app/permissions';
 
 const user = Astro.locals.user;
@@ -39,7 +41,14 @@ try {
     <input type="date" name="fecha_hasta" value={p.get('fecha_hasta') ?? ''} title="Hasta" />
     <select name="idioma_tour">
       <option value="">Idioma</option>
-      {['es','en','it'].map(i => <option value={i} selected={p.get('idioma_tour')===i}>{i.toUpperCase()}</option>)}
+      {TOUR_LANGUAGE_OPTIONS.map(language => (
+        <option
+          value={language.code}
+          selected={p.get('idioma_tour') === language.code}
+        >
+          {language.flag} {language.label}
+        </option>
+      ))}
     </select>
     <button type="submit" class="btn-primary">Filtrar</button>
     <a href="/app/clientes" class="btn-ghost">Limpiar</a>
@@ -78,7 +87,12 @@ try {
                 : <span class="muted">—</span>}
             </td>
             <td>{r.pais ?? '—'}</td>
-            <td>{r.idioma_cliente?.toUpperCase()}</td>
+            <td>
+              <TourLanguageBadge
+                code={r.idioma_tour}
+                compact
+              />
+            </td>
             <td class="td-center"><strong>{r.total_reservas}</strong></td>
             <td>
               {r.comportamiento_cliente !== 'normal'
