@@ -916,7 +916,7 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
   </button>
   </div>
 
-  <div class="panel-content overflow-y-auto max-h-[calc(100vh-8rem)] p-4">
+  <div class="panel-content min-w-0 overflow-y-auto overflow-x-hidden p-4">
   {
     bookingMode === "request"
       ? <PrivateRequestForm tour={tour} lang={lang} />
@@ -977,8 +977,17 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
   bottom: 0;
   z-index: 80;
 
+  width: 100%;
+  max-width: 100%;
+
   height: 100vh;
+  height: 100dvh;
+
   max-height: 100vh;
+  max-height: 100dvh;
+
+  overflow: hidden;
+  overscroll-behavior: contain;
 
   background: #fff;
   border-radius: 24px 24px 0 0;
@@ -996,8 +1005,35 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
    PANEL CONTENT SCROLL (CRÍTICO)
 ====================================================== */
 .booking-panel .panel-content {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+
   overflow-y: auto;
+  overflow-x: hidden;
+
   max-height: calc(100vh - 4.5rem);
+  max-height: calc(100dvh - 4.5rem);
+
+  padding-bottom:
+    calc(1rem + env(safe-area-inset-bottom));
+
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 1023px) {
+  .booking-panel {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .booking-panel .panel-content {
+    padding-left:
+      max(1rem, env(safe-area-inset-left));
+    padding-right:
+      max(1rem, env(safe-area-inset-right));
+  }
 }
 
 /* ======================================================
@@ -1025,6 +1061,7 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
 
   .booking-panel .panel-content {
     max-height: calc(85vh - 4.5rem);
+    max-height: calc(85dvh - 4.5rem);
   }
 }
 
@@ -1046,7 +1083,7 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
 ====================================================== */
 body.no-scroll {
   overflow: hidden;
-  touch-action: none;
+  overscroll-behavior: none;
 }
 
 /* ======================================================
