@@ -83,9 +83,17 @@ const TEXTS: Record<
 };
 
 const texts = TEXTS[safeLang];
+
+// F01 (B09 Gate 1): un tour de Bruselas ocurre en hora de Bruselas.
+// "Hoy" no puede depender de la zona horaria del runtime del
+// servidor (Netlify Functions usa UTC por defecto) — se ancla
+// explícitamente a Europe/Brussels vía Intl (sin dependencia nueva,
+// DST-safe de forma nativa). Mismo criterio que el cliente (más
+// abajo) y que el backend (BUSINESS_ZONE en direct-booking.js).
 function todayISO() {
-  const d = new Date();
-  return d.toLocaleDateString("sv-SE");
+  return new Date().toLocaleDateString("sv-SE", {
+    timeZone: "Europe/Brussels",
+  });
 }
 
 async function getHorariosByTourId(
@@ -297,6 +305,34 @@ const lastDate = fechasDisponibles[fechasDisponibles.length - 1] ?? firstDate;
 <script type="application/json" id="fechas-data" set:html={JSON.stringify(fechasDisponibles)}></script>
 
 <script>
+import { DateTime } from "luxon";
+
+// F01 (B09 Gate 1): zona horaria comercial única — un tour de
+// Bruselas ocurre en hora de Bruselas, nunca en la del dispositivo
+// del visitante. Luxon con IANA timezone resuelve CET/CEST (DST) de
+// forma nativa, sin offsets manuales. Mismo criterio que el SSR
+// (arriba, vía Intl) y que el backend (BUSINESS_ZONE en
+// direct-booking.js) — misma regla, tres puntos de aplicación.
+const BUSINESS_ZONE = "Europe/Brussels";
+
+function brusselsNow(): DateTime {
+  return DateTime.now().setZone(BUSINESS_ZONE);
+}
+
+function brusselsTodayISO(): string {
+  return brusselsNow().toISODate() as string;
+}
+
+// Regla de negocio única: reservable únicamente si slotStart > now,
+// en Europe/Brussels. Sin cutoff adicional. Datos inválidos → no
+// reservable (fail-safe), igual que el backend.
+function isSlotBookable(fecha: string, hora: string, now = brusselsNow()): boolean {
+  if (!fecha || !hora) return false;
+  const slot = DateTime.fromISO(`${fecha}T${hora}`, { zone: BUSINESS_ZONE });
+  if (!slot.isValid) return false;
+  return slot > now;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const horarios = JSON.parse(
     document.getElementById("horarios-data")?.textContent || "[]"
@@ -336,29 +372,25 @@ function renderQuickDates() {
   if (!quickDatesContainer) return;
 
   quickDatesContainer.innerHTML = "";
-const now = new Date();
-
-const todayStr = now.toLocaleDateString("sv-SE");
+const todayStr = brusselsTodayISO();
 
 let validDates = [...fechasDisponibles];
 
-// 🔥 comprobar si hoy aún tiene horarios futuros
-const nowTime = new Date();
-
+// 🔥 comprobar si hoy aún tiene horarios futuros (Europe/Brussels)
 const todayHasFutureTimes = horarios.some((h: any) => {
   if (h.fecha !== todayStr) return false;
-
-  const [hh, mm] = h.hora.split(":").map(Number);
-  const horarioDate = new Date();
-  horarioDate.setHours(hh, mm, 0, 0);
-
-  return horarioDate > nowTime;
+  return isSlotBookable(h.fecha, h.hora);
 });
 
 // si hoy no tiene horarios futuros → eliminarlo
 if (!todayHasFutureTimes) {
   validDates = validDates.filter((f) => f !== todayStr);
 }
+
+// cualquier fecha estrictamente anterior a "hoy" en Brussels nunca es
+// válida como quick date, aunque llegara en fechasDisponibles por
+// alguna vía (defensa en profundidad además del filtro SSR)
+validDates = validDates.filter((f) => f >= todayStr);
 
 const limitedDates = validDates.slice(0, 10);
 
@@ -367,12 +399,8 @@ const limitedDates = validDates.slice(0, 10);
     btn.type = "button";
 
     let label = formatShortDate(fecha);
-const today = new Date();
-const todayISO = today.toLocaleDateString("sv-SE");
-
-const tomorrow = new Date();
-tomorrow.setDate(today.getDate() + 1);
-const tomorrowISO = tomorrow.toLocaleDateString("sv-SE");
+const todayISO = brusselsTodayISO();
+const tomorrowISO = brusselsNow().plus({ days: 1 }).toISODate() as string;
 
 if (fecha === todayISO) {
   label =
@@ -450,6 +478,36 @@ btn.style.scrollSnapAlign = "start";
 
 renderQuickDates();
 
+// F01 §7 (B09 Gate 1) — sesión obsoleta: si la pestaña permanece
+// abierta y el reloj avanza (incluida medianoche Brussels), se
+// reconcilia al recuperar visibilidad/foco. Sin polling — sólo en
+// esos dos eventos, mecanismo mínimo.
+let lastKnownBrusselsToday = brusselsTodayISO();
+
+function reconcileBrusselsTime() {
+  const currentToday = brusselsTodayISO();
+
+  if (currentToday !== lastKnownBrusselsToday) {
+    // Cambió el día comercial (p.ej. cruzó medianoche Brussels) —
+    // reconstruir quick dates desde cero, que ya vuelve a
+    // seleccionar la fecha inicial correcta.
+    lastKnownBrusselsToday = currentToday;
+    renderQuickDates();
+    return;
+  }
+
+  // Mismo día: si la fecha actualmente mostrada es "hoy", reevaluar
+  // sus horarios por si alguno acaba de pasar.
+  if (fechaPicker.value === currentToday) {
+    renderHorarios(currentToday);
+  }
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") reconcileBrusselsTime();
+});
+window.addEventListener("focus", reconcileBrusselsTime);
+
 if (toggleBtn) {
   toggleBtn.addEventListener("click", () => {
     fechaPicker.classList.toggle("hidden");
@@ -508,20 +566,32 @@ function getUrgencyText(spots: number): string | null {
     contenedor.style.opacity = "1";
   });
 
-  const now = new Date();
-const todayStr = now.toLocaleDateString("sv-SE"); 
+  const todayStr = brusselsTodayISO();
 
   // 1️⃣ Filtrar por fecha
   let delDia = horarios.filter((h: any) => h.fecha === fecha);
 
-  // 2️⃣ Si es hoy, filtrar horarios pasados
+  // 2️⃣ Si es hoy, filtrar horarios pasados (Europe/Brussels, F01)
   if (fecha === todayStr) {
-    delDia = delDia.filter((h: any) => {
-      const [hh, mm] = h.hora.split(":").map(Number);
-      const horarioDate = new Date();
-      horarioDate.setHours(hh, mm, 0, 0);
-      return horarioDate > now;
-    });
+    const before = delDia;
+    delDia = delDia.filter((h: any) => isSlotBookable(h.fecha, h.hora));
+
+    // Si el horario que el usuario ya tenía seleccionado acaba de
+    // pasar (sesión abierta durante un rato, F01 §7 escenario A),
+    // limpiar la selección para que no quede "elegido" un slot que
+    // el backend rechazaría — obliga a elegir uno nuevo.
+    const stillHasSelected = delDia.some(
+      (h: any) => Number(h.id) === (window as any).bookingState?.horarioId
+    );
+    const hadSelected = before.some(
+      (h: any) => Number(h.id) === (window as any).bookingState?.horarioId
+    );
+    if (hadSelected && !stillHasSelected && (window as any).bookingState) {
+      (window as any).bookingState.selectedDate = null;
+      (window as any).bookingState.selectedTime = null;
+      (window as any).bookingState.horarioId = null;
+      (window as any).updateBookingNavigation?.();
+    }
   }
 
   // 3️⃣ Si no hay horarios válidos → auto avanzar
