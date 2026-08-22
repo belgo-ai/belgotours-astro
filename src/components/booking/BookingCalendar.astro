@@ -632,6 +632,15 @@ const todayStr = now.toLocaleDateString("sv-SE");
       window.dispatchEvent(new CustomEvent("dateSelected"));
       window.dispatchEvent(new CustomEvent("timeSelected"));
 
+      // Un solo evento GA4 por selección real de horario — dateSelected +
+      // timeSelected se disparan juntos desde este mismo bloque, así que
+      // sólo se engancha aquí (no en ambos listeners) para no duplicar.
+      (window as any).BTAnalytics?.trackEvent("select_availability_date", {
+        ...((window as any).__BT_TOUR__ || {}),
+        selected_date: h.fecha,
+        selected_time: h.hora,
+      });
+
       setTimeout(() => {
   const participantSection = document.getElementById("participantCounter") ||
     document.querySelector(".participant-counter");

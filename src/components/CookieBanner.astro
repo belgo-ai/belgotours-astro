@@ -47,7 +47,7 @@ const c = t[lang] || t.en;
           <div class="cookie-option-name">{c.analytics}</div>
           <div class="cookie-option-desc">{c.analyticsDesc}</div>
         </div>
-        <input type="checkbox" id="analytics-check" checked class="cookie-check" />
+        <input type="checkbox" id="analytics-check" class="cookie-check" />
       </label>
       <label class="cookie-option">
         <div>
@@ -153,9 +153,6 @@ const c = t[lang] || t.en;
 
 <script define:vars={{ COOKIE_KEY: "belgotours_cookie_consent" }}>
 (function() {
-  // Si ya hay consentimiento, no mostrar
-  if (localStorage.getItem(COOKIE_KEY)) return;
-
   const banner  = document.getElementById("cookie-banner");
   const panel   = document.getElementById("cookie-panel");
   const acceptBtn  = document.getElementById("cookie-accept-btn");
@@ -163,16 +160,31 @@ const c = t[lang] || t.en;
   const settingsBtn = document.getElementById("cookie-settings-btn");
   const saveBtn    = document.getElementById("cookie-save-btn");
   const closeBtn   = document.getElementById("cookie-panel-close");
+  const analyticsCheck = document.getElementById("analytics-check");
+  const marketingCheck = document.getElementById("marketing-check");
 
-  // Mostrar banner con pequeño delay para no bloquear LCP
-  setTimeout(() => {
-    if (banner) banner.style.display = "block";
-  }, 800);
+  function readPrefs() {
+    try {
+      const raw = localStorage.getItem(COOKIE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Mostrar banner con pequeño delay para no bloquear LCP —
+  // sólo en la primera visita, sin elección previa guardada.
+  if (!readPrefs()) {
+    setTimeout(() => {
+      if (banner) banner.style.display = "block";
+    }, 800);
+  }
 
   function save(prefs) {
     localStorage.setItem(COOKIE_KEY, JSON.stringify(prefs));
     if (banner) banner.style.display = "none";
     if (panel)  panel.style.display  = "none";
+    window.BTAnalytics?.updateConsent(prefs.analytics, prefs.marketing);
   }
 
   acceptBtn?.addEventListener("click", () => {
@@ -185,18 +197,31 @@ const c = t[lang] || t.en;
 
   settingsBtn?.addEventListener("click", () => {
     if (banner) banner.style.display = "none";
-    if (panel)  panel.style.display  = "flex";
+    openPanel();
   });
 
   closeBtn?.addEventListener("click", () => {
     if (panel)  panel.style.display  = "none";
-    if (banner) banner.style.display = "block";
   });
 
   saveBtn?.addEventListener("click", () => {
-    const analytics = (document.getElementById("analytics-check"))?.checked ?? true;
-    const marketing = (document.getElementById("marketing-check"))?.checked ?? false;
+    const analytics = analyticsCheck?.checked ?? false;
+    const marketing = marketingCheck?.checked ?? false;
     save({ essential: true, analytics, marketing });
   });
+
+  // Abre el panel reflejando la elección actual guardada (o los
+  // defaults sin marcar si todavía no hay ninguna) — reutilizable
+  // tanto desde "Configurar" en el banner inicial como desde el
+  // enlace "Gestionar cookies" del footer, en cualquier momento
+  // posterior (retirar/cambiar consentimiento).
+  function openPanel() {
+    const prefs = readPrefs();
+    if (analyticsCheck) analyticsCheck.checked = !!prefs?.analytics;
+    if (marketingCheck) marketingCheck.checked = !!prefs?.marketing;
+    if (panel) panel.style.display = "flex";
+  }
+
+  window.openCookiePreferences = openPanel;
 })();
 </script>

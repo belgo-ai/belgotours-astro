@@ -88,6 +88,11 @@ if (isHomePage) {
 <!DOCTYPE html>
 <html lang={currentLang}>
   <head>
+    <!-- Consent Mode default + GA4 (Direct gtag, carga condicionada a
+         consentimiento analytics real) — debe ejecutarse antes que
+         cualquier otro script. Ver ANALYTICS_PLAN.md. -->
+    <script is:inline src="/js/analytics.js"></script>
+
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 

@@ -6,6 +6,8 @@ interface Props {
     id?: number | string | null;
     slug?: string;
     titulo?: string;
+    ciudad?: string;
+    tipo_tour?: string;
     booking_mode?: "direct" | "request";
     review_mode?: "auto" | "manual";
   };
@@ -176,6 +178,8 @@ const preferredTimeOptions = Array.from(
   data-api={STRAPI_API_BASE}
   data-lang={safeLang}
   data-tour-slug={tour.slug ?? ""}
+  data-tour-city={tour.ciudad ?? ""}
+  data-tour-type={tour.tipo_tour ?? ""}
   class="w-full min-w-0 max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-x-hidden"
 >
   <div class="border-b border-gray-200 p-4 sm:p-6 md:p-8">
@@ -716,6 +720,15 @@ const preferredTimeOptions = Array.from(
         successBox.scrollIntoView({
           behavior: "smooth",
           block: "start",
+        });
+
+        (window as any).BTAnalytics?.trackEvent("generate_lead", {
+          tour_slug: root.dataset.tourSlug || "",
+          tour_city: root.dataset.tourCity || "",
+          tour_type: root.dataset.tourType || "",
+          content_language: lang,
+          tour_language: payload.idioma_tour,
+          participants_total: payload.adultos + payload.ninos,
         });
       } catch (error) {
         errorBox.textContent =

@@ -1,6 +1,11 @@
 function initBookingPanel() {
   const overlayEl = document.getElementById("bookingOverlay");
   const panelEl = document.getElementById("bookingPanel");
+  // Nota: los botones de tours "request" llevan AMBAS clases
+  // (openBookingBtn + openPrivateRequestBtn, ver [tourSlug].astro) —
+  // por eso la distinción real/privado se hace por
+  // openPrivateRequestBtn (presente sólo en modo solicitud), nunca
+  // asumiendo que openBookingBtn por sí sola implica disponibilidad real.
   const openBtns = document.querySelectorAll(
     ".openBookingBtn, .openPrivateRequestBtn"
   );
@@ -12,9 +17,13 @@ function initBookingPanel() {
 
   let isOpen = false;
 
-  function openPanel() {
+  function openPanel(isRealAvailability) {
     if (isOpen) return;
     isOpen = true;
+
+    if (isRealAvailability) {
+      window.BTAnalytics?.trackEvent("view_availability", window.__BT_TOUR__);
+    }
 
     overlayEl.classList.remove("hidden");
     requestAnimationFrame(() => overlayEl.classList.add("open"));
@@ -44,7 +53,10 @@ function initBookingPanel() {
   openBtns.forEach((btn) =>
     btn.addEventListener("click", function (e) {
       e.preventDefault();
-      openPanel();
+      const isRealAvailability = !btn.classList.contains(
+        "openPrivateRequestBtn"
+      );
+      openPanel(isRealAvailability);
     })
   );
 

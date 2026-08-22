@@ -192,6 +192,7 @@ seoH1: attrs.seo_h1 || "",
 claimHero: attrs.claim_hero || "",
 descripcion: attrs.descripcion || "",
 ciudad: attrs.ciudad || "", // bruselas|brujas
+tipo_tour: tipoTour, // free|privado|especial — para eventos GA4 (ver ANALYTICS_PLAN.md)
 idioma: Array.isArray(attrs.idiomas) ? attrs.idiomas[0] : (attrs.idioma || null),
 booking_mode: bookingMode,
 review_mode: reviewMode,
@@ -1230,6 +1231,31 @@ body.no-scroll {
 }
 </style>
   
+<script
+  is:inline
+  define:vars={{
+    ANALYTICS_TOUR_SLUG: tour.slug,
+    ANALYTICS_TOUR_NAME: tour.titulo,
+    ANALYTICS_TOUR_CITY: tour.ciudad,
+    ANALYTICS_TOUR_TYPE: tipoTour,
+    ANALYTICS_CONTENT_LANG: lang,
+    ANALYTICS_TOUR_LANG: tour.idioma,
+  }}
+>
+  // Contexto del tour para eventos GA4 disparados desde scripts
+  // clásicos que no tienen acceso al frontmatter de Astro
+  // (bookingPanel.js). Sólo campos de producto, cero PII.
+  window.__BT_TOUR__ = {
+    tour_slug: ANALYTICS_TOUR_SLUG,
+    tour_name: ANALYTICS_TOUR_NAME,
+    tour_city: ANALYTICS_TOUR_CITY,
+    tour_type: ANALYTICS_TOUR_TYPE,
+    content_language: ANALYTICS_CONTENT_LANG,
+    tour_language: ANALYTICS_TOUR_LANG,
+  };
+  window.BTAnalytics?.trackEvent("view_item", window.__BT_TOUR__);
+</script>
+
 <script is:inline src="/js/bookingPanel.js"></script>
 
 <script>

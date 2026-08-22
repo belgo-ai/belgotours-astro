@@ -130,6 +130,7 @@ const tracking: Record<string, string | undefined> = {
   utm_medium: urlParams.get("utm_medium") || undefined,
   utm_campaign: urlParams.get("utm_campaign") || undefined,
   utm_content: urlParams.get("utm_content") || undefined,
+  utm_term: urlParams.get("utm_term") || undefined,
   gclid: urlParams.get("gclid") || undefined,
   referrer: document.referrer || undefined,
 };
@@ -540,6 +541,12 @@ step2Inputs.forEach((input) => {
       if (currentStep === 1) {
         if (!validateStep1(true)) return;
         showStep(2);
+        const state = window.bookingState || {};
+        (window as any).BTAnalytics?.trackEvent("begin_checkout", {
+          ...((window as any).__BT_TOUR__ || {}),
+          selected_date: state.selectedDate,
+          selected_time: state.selectedTime,
+        });
         return;
       }
       if (currentStep === 2) {

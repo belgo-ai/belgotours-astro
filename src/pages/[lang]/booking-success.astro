@@ -16,6 +16,7 @@ let error = null;
 
 let fechaFormateada = "";
 let horaFormateada = "";
+let fechaISO = "";
 
 // =============================
 // TRADUCCIONES
@@ -96,6 +97,7 @@ if (!reservaId) {
 
     fechaFormateada = dt.setLocale(lang).toLocaleString(DateTime.DATE_FULL);
     horaFormateada = dt.toFormat("HH:mm");
+    fechaISO = dt.toFormat("yyyy-LL-dd");
   }
 }
   } catch (e) {
@@ -206,6 +208,42 @@ Participantes: ${reserva.adultos} adultos, ${reserva.ninos} niños`
   </a>
 
 </div>
+
+<script
+  is:inline
+  define:vars={{
+    BC_RESERVA_ID: reserva.id,
+    BC_TOUR_SLUG: reserva.tour?.slug || "",
+    BC_TOUR_NAME: reserva.tour?.titulo || "",
+    BC_TOUR_CITY: reserva.tour?.ciudad || "",
+    BC_TOUR_TYPE: reserva.tour?.tipo_tour || "",
+    BC_CONTENT_LANG: lang,
+    BC_TOUR_LANG: reserva.idioma_tour || "",
+    BC_SELECTED_DATE: fechaISO,
+    BC_SELECTED_TIME: horaFormateada,
+    BC_PARTICIPANTS_TOTAL: (reserva.adultos || 0) + (reserva.ninos || 0),
+  }}
+>
+  // Fuente de verdad: sólo llega aquí si el SSR confirmó una reserva
+  // real vía GET a Strapi (ver frontmatter). BC_RESERVA_ID se usa
+  // ÚNICAMENTE como parte de la clave local de dedupe — nunca se
+  // envía a GA4.
+  (function () {
+    if (!window.BTAnalytics) return;
+    if (!window.BTAnalytics.onceGuard("bc_" + BC_RESERVA_ID)) return;
+    window.BTAnalytics.trackEvent("booking_confirmed", {
+      tour_slug: BC_TOUR_SLUG,
+      tour_name: BC_TOUR_NAME,
+      tour_city: BC_TOUR_CITY,
+      tour_type: BC_TOUR_TYPE,
+      content_language: BC_CONTENT_LANG,
+      tour_language: BC_TOUR_LANG,
+      selected_date: BC_SELECTED_DATE,
+      selected_time: BC_SELECTED_TIME,
+      participants_total: BC_PARTICIPANTS_TOTAL,
+    });
+  })();
+</script>
 
           </>
         )}

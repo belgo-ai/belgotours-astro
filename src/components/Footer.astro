@@ -30,6 +30,7 @@ const texts = {
       cookies: "Cookies",
       terms: "Términos",
       legal: "Aviso legal",
+      managePrefs: "Gestionar cookies",
     },
     rights: "Todos los derechos reservados.",
   },
@@ -58,6 +59,7 @@ const texts = {
       cookies: "Cookies",
       terms: "Terms",
       legal: "Legal notice",
+      managePrefs: "Manage cookies",
     },
     rights: "All rights reserved.",
   },
@@ -86,6 +88,7 @@ const texts = {
       cookies: "Cookies",
       terms: "Conditions",
       legal: "Mentions légales",
+      managePrefs: "Gérer les cookies",
     },
     rights: "Tous droits réservés.",
   },
@@ -114,6 +117,7 @@ const texts = {
       cookies: "Cookie",
       terms: "Termini",
       legal: "Note legali",
+      managePrefs: "Gestisci cookie",
     },
     rights: "Tutti i diritti riservati.",
   },
@@ -142,6 +146,7 @@ const texts = {
       cookies: "Cookies",
       terms: "Termos",
       legal: "Aviso legal",
+      managePrefs: "Gerir cookies",
     },
     rights: "Todos os direitos reservados.",
   },
@@ -221,8 +226,15 @@ const social = [
         <a href={`/${lang}/cookies`} class="hover:text-white">{t.legal.cookies}</a>
         <a href={`/${lang}/terms`} class="hover:text-white">{t.legal.terms}</a>
         <a href={`/${lang}/legal-notice`} class="hover:text-white">{t.legal.legal}</a>
+        <button type="button" id="footer-manage-cookies" class="hover:text-white underline-offset-2 hover:underline bg-transparent border-0 p-0 cursor-pointer text-sm text-white/50">{t.legal.managePrefs}</button>
       </div>
     </div>
 
   </div>
 </footer>
+
+<script>
+  document.getElementById("footer-manage-cookies")?.addEventListener("click", () => {
+    (window as any).openCookiePreferences?.();
+  });
+</script>
