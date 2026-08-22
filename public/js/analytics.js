@@ -60,8 +60,19 @@
       var name = c.split("=")[0].trim();
       if (name === "_ga" || name.indexOf("_ga_") === 0) names.push(name);
     });
+    // gtag.js escribe estas cookies con domain=.<host> (cookie de dominio,
+    // con punto inicial) — borrar sólo con path=/ crea una cookie
+    // host-only distinta y deja la original intacta. Se intenta con y sin
+    // el dominio explícito para cubrir ambos casos de forma robusta.
+    var host = window.location.hostname;
+    var domains = [host];
+    if (host.indexOf(".") !== -1) domains.push("." + host);
     names.forEach(function (name) {
       document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+      domains.forEach(function (domain) {
+        document.cookie =
+          name + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=" + domain;
+      });
     });
   }
 
