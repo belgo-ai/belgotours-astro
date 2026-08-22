@@ -191,6 +191,18 @@ https://reservas.belgotours.com/*   https://belgotours.com/es/   301!
 /fr/partners/                /fr/b2b-collaboration-belgium    301
 
 # ======================================
+# LEGACY 301 RESTAURADOS (B06C.1, 2026-08-22)
+# ======================================
+# Identificados con evidencia real de GSC en B07A.1: sucesor actual
+# exacto (misma ciudad, mismo idioma, mismo producto), a diferencia de
+# los 11 mismapeos Brujas/Gante retirados en B06C (esos no tenían
+# ningún sucesor real en su idioma — siguen 404 a propósito, no se
+# tocan aquí). Targets sin trailing slash, coherentes con la política
+# de páginas hoja de B06C.
+/en/private-walking-tour-of-brussels/   /en/tours/private-tour-brussels   301
+/esee-tour-brujas/                      /es/tours/free-tour-brujas        301
+
+# ======================================
 # NOTA (B06A, 2026-08-22): existía aquí una regla
 # "/pt -> /pt/ 301" que causaba un bucle de redirección infinito real
 # en producción: Netlify normaliza el trailing slash del lado "from" de
