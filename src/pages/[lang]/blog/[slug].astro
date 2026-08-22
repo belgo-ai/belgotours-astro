@@ -5,7 +5,15 @@ import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 
 const { lang, slug } = Astro.params as { lang: string; slug: string };
-const safeLang = ['es','en','it','fr','pt'].includes(lang) ? lang : 'es';
+
+// Idioma no soportado no debe servir el fallback español disfrazado
+// vía html lang (B06A / item 6). El artículo en sí ya redirige de forma
+// segura si no existe body real para ese idioma+slug (ver más abajo).
+if (!lang || !["es", "en", "it", "fr", "pt"].includes(lang)) {
+  return new Response(null, { status: 404 });
+}
+
+const safeLang = lang;
 
 // Artículos por slug e idioma
 type Article = {

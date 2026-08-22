@@ -5,7 +5,14 @@ import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 
 const { lang } = Astro.params as { lang: string };
-const safeLang = ['es','en','it','fr','pt'].includes(lang) ? lang : 'es';
+
+// Idioma no soportado no debe servir el fallback español disfrazado
+// vía html lang (B06A / item 6). Blog sí tiene contenido real en pt.
+if (!lang || !["es", "en", "it", "fr", "pt"].includes(lang)) {
+  return new Response(null, { status: 404 });
+}
+
+const safeLang = lang;
 
 const SEO: Record<string, {title: string; description: string}> = {
   es: { title: "Blog de Viajes por Bélgica | Guías y Consejos · BelgoTours", description: "Guías de viaje, itinerarios y consejos para visitar Bruselas y Brujas. Descubre qué ver, qué hacer y cómo aprovechar tu visita a Bélgica." },

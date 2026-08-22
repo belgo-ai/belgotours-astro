@@ -14,6 +14,12 @@ import { SEARCHBOX_TOURS } from "@/data/tours/searchbox.tours";
 /* PARAMS */
 const { lang } = Astro.params as { lang: "es" | "en" | "it" | "fr" | "pt" };
 
+// Idioma no soportado no debe servir el fallback español disfrazado
+// vía html lang (B06A / item 6). Home sí tiene contenido real en pt.
+if (!lang || !["es", "en", "it", "fr", "pt"].includes(lang)) {
+  return new Response(null, { status: 404 });
+}
+
 /* SEO fallback */
 const canonical = `https://belgotours.com/${lang}/`;
 

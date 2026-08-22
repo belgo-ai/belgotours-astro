@@ -42,10 +42,15 @@ const { tourSlug, lang: rawLang } = Astro.params;
 
 type Lang = "es" | "en" | "it" | "fr";
 
-const lang: Lang =
-  rawLang && ["es", "en", "it", "fr"].includes(rawLang)
-    ? (rawLang as Lang)
-    : "es";
+// No hay contenido real de tours en portugués (ni en ningún otro idioma
+// no soportado). No se hace fallback silencioso a español: un idioma no
+// soportado en esta ruta responde 404 real, no 200 con contenido/idioma
+// incorrectos (ver B06A / SEO-008).
+if (!rawLang || !["es", "en", "it", "fr"].includes(rawLang)) {
+  return new Response(null, { status: 404 });
+}
+
+const lang = rawLang as Lang;
 
 const tourData = await getTourBySlug(tourSlug, lang);
 
@@ -446,78 +451,182 @@ const metaDescription =
     ? stripHtml(tour.seoDescription)
     : heroSubtitle;
 
+// Sin trailing slash (política de páginas hoja — B06C). El sitemap
+// oficial, el hreflang self-referente de esta misma página y la
+// inmensa mayoría de reglas de `_redirects` ya usan esta forma para
+// tours; antes solo el canonical usaba "/" al final, contradiciendo
+// al propio hreflang self de la página (SEO-002).
 const canonicalUrl =
 (tour.seoCanonical && tour.seoCanonical.trim()) ||
-`https://belgotours.com/${lang}/tours/${tour.slug}/`;
+`https://belgotours.com/${lang}/tours/${tour.slug}`;
 
-// Minimal JSON-LD (luego lo refinamos con @type correcto y reviews)
-const tourSchema =
-reviewCount > 0
-  ? {
-      "@context": "https://schema.org",
-      "@type": "Product",
-      "@id": `${canonicalUrl}#product`,
-      url: canonicalUrl,
-      name: tour.titulo,
-      description: metaDescription,
-      image: tour.heroMedia?.imagen
-        ? [tour.heroMedia.imagen]
-        : undefined,
+// Product/Offer describen el tour en sí (precio, disponibilidad,
+// idioma) y son datos siempre reales/disponibles — no dependen de si
+// hay reviews. AggregateRating/Review SÍ dependen de datos reales de
+// reviews y solo se añaden cuando reviewCount > 0 (nunca se fabrican
+// — B06D / SEO-004: antes todo el bloque, incluido Product/Offer,
+// estaba condicionado a reviewCount > 0, así que un tour con cero
+// reviews no tenía NINGÚN structured data, ni siquiera el que sí
+// tenía datos reales disponibles).
+const tourSchema: Record<string, any> = {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "@id": `${canonicalUrl}#product`,
+  url: canonicalUrl,
+  name: tour.titulo,
+  description: metaDescription,
+  image: tour.heroMedia?.imagen
+    ? [tour.heroMedia.imagen]
+    : undefined,
 
-      brand: {
-        "@type": "Organization",
-        name: "BelgoTours",
-        url: "https://belgotours.com"
-      },
+  brand: {
+    "@type": "Organization",
+    name: "BelgoTours",
+    url: "https://belgotours.com"
+  },
 
-      provider: {
-        "@type": "Organization",
-        name: "BelgoTours",
-        url: "https://belgotours.com"
-      },
+  provider: {
+    "@type": "Organization",
+    name: "BelgoTours",
+    url: "https://belgotours.com"
+  },
 
-      areaServed: {
-        "@type": "City",
-        name: tour.ciudad === "bruselas" ? "Brussels" : "Bruges"
-      },
+  areaServed: {
+    "@type": "City",
+    name: tour.ciudad === "bruselas" ? "Brussels" : "Bruges"
+  },
 
-      inLanguage: lang,
+  inLanguage: lang,
 
-      offers: {
-        "@type": "Offer",
-        priceCurrency: "EUR",
-        price: tour.precioBase && tour.precioBase > 0
-          ? String(tour.precioBase)
-          : "0",
-        availability: "https://schema.org/InStock",
-        url: canonicalUrl
-      },
+  offers: {
+    "@type": "Offer",
+    priceCurrency: "EUR",
+    price: tour.precioBase && tour.precioBase > 0
+      ? String(tour.precioBase)
+      : "0",
+    availability: "https://schema.org/InStock",
+    url: canonicalUrl
+  },
+};
 
-      aggregateRating: {
-        "@type": "AggregateRating",
-        ratingValue: rating.toFixed(1),
-        reviewCount: reviewCount,
-        bestRating: "5",
-        worstRating: "1"
-      },
+if (reviewCount > 0) {
+  tourSchema.aggregateRating = {
+    "@type": "AggregateRating",
+    ratingValue: rating.toFixed(1),
+    reviewCount: reviewCount,
+    bestRating: "5",
+    worstRating: "1"
+  };
 
-      review: topReviews.map((r: any) => ({
-        "@type": "Review",
-        author: {
-          "@type": "Person",
-          name: r.nombre || "Traveler"
-        },
-        datePublished: r.fecha,
-        reviewBody: r.comentario || "",
-        reviewRating: {
-          "@type": "Rating",
-          ratingValue: String(r.rating),
-          bestRating: "5",
-          worstRating: "1"
-        }
-      }))
+  tourSchema.review = topReviews.map((r: any) => ({
+    "@type": "Review",
+    author: {
+      "@type": "Person",
+      name: r.nombre || "Traveler"
+    },
+    datePublished: r.fecha,
+    reviewBody: r.comentario || "",
+    reviewRating: {
+      "@type": "Rating",
+      ratingValue: String(r.rating),
+      bestRating: "5",
+      worstRating: "1"
     }
-  : null;
+  }));
+}
+
+/* =========================================================
+BREADCRUMBS (jerarquía real: Home -> Tour, sin categorías
+inexistentes como "/brussels/" — B06D)
+========================================================= */
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: "BelgoTours",
+      item: `https://belgotours.com/${lang}/`,
+    },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: tour.titulo,
+      item: canonicalUrl,
+    },
+  ],
+};
+
+/* =========================================================
+RELATED TOURS (internal linking — B06D, SEO-007)
+Mapa estático frontend, mismo idioma primero (CONTENT_LANGUAGE),
+solo entre slugs reales que existen hoy. No deriva de Strapi (no hay
+relación explícita en el CMS todavía — ver RELATED_TOURS_DATA_MODEL
+en BACKLOG.md/CURRENT_GATE.md para la mejora futura recomendada).
+Bruselas es el clúster comercial prioritario (los 4 tours de Bruselas
+se enlazan entre sí); Brujas se mantiene sano pero no se mezcla en
+ese clúster — sus 2 tours se enlazan entre sí y además hacia el
+flagship de Bruselas (upsell hacia el producto principal), sin que
+Bruselas enlace de vuelta a Brujas.
+========================================================= */
+const RELATED_TOURS: Record<string, Record<string, string[]>> = {
+  es: {
+    "free-tour-bruselas": ["free-tour-cerveza-bruselas", "tour-chocolate-cerveza-bruselas", "tour-privado-bruselas"],
+    "free-tour-cerveza-bruselas": ["free-tour-bruselas", "tour-chocolate-cerveza-bruselas", "tour-privado-bruselas"],
+    "tour-chocolate-cerveza-bruselas": ["free-tour-bruselas", "free-tour-cerveza-bruselas", "tour-privado-bruselas"],
+    "tour-privado-bruselas": ["free-tour-bruselas", "free-tour-cerveza-bruselas", "tour-chocolate-cerveza-bruselas"],
+    "free-tour-brujas": ["tour-privado-brujas", "free-tour-bruselas"],
+    "tour-privado-brujas": ["free-tour-brujas", "tour-privado-bruselas"],
+  },
+  en: {
+    "free-tour-brussels": ["private-tour-brussels"],
+    "private-tour-brussels": ["free-tour-brussels"],
+  },
+  it: {
+    "free-tour-bruxelles": ["tour-privato-bruxelles"],
+    "tour-privato-bruxelles": ["free-tour-bruxelles"],
+  },
+  fr: {
+    // Único tour real en francés hoy (tour-prive-bruxelles): sin
+    // relacionados reales que enlazar todavía (SEO-007, huérfano por
+    // falta de contenido FR, no por un bug de este bloque).
+  },
+};
+
+const RELATED_TOUR_LABELS: Record<string, Record<string, string>> = {
+  es: {
+    "free-tour-bruselas": "Free Tour Bruselas",
+    "free-tour-cerveza-bruselas": "Tour de la Cerveza en Bruselas",
+    "tour-chocolate-cerveza-bruselas": "Tour de Chocolate y Cerveza",
+    "tour-privado-bruselas": "Tour Privado en Bruselas",
+    "free-tour-brujas": "Free Tour Brujas",
+    "tour-privado-brujas": "Tour Privado en Brujas",
+  },
+  en: {
+    "free-tour-brussels": "Free Tour Brussels",
+    "private-tour-brussels": "Private Tour in Brussels",
+  },
+  it: {
+    "free-tour-bruxelles": "Free Tour Bruxelles",
+    "tour-privato-bruxelles": "Tour Privato a Bruxelles",
+  },
+  fr: {},
+};
+
+const RELATED_SECTION_TITLE: Record<string, string> = {
+  es: "También te puede interesar",
+  en: "Discover more BelgoTours experiences",
+  it: "Potrebbero interessarti anche",
+  fr: "",
+};
+
+const relatedSlugs = RELATED_TOURS[lang]?.[tour.slug] ?? [];
+const relatedTours = relatedSlugs.map((slug) => ({
+  slug,
+  href: `/${lang}/tours/${slug}`,
+  label: RELATED_TOUR_LABELS[lang]?.[slug] ?? slug,
+}));
   ---
 
 <Layout
@@ -528,6 +637,7 @@ canonical={canonicalUrl}
 {tourSchema && (
 <script type="application/ld+json" set:html={JSON.stringify(tourSchema)} />
 )}
+<script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema)} />
 
 <!-- 1) HEADER (global) -->
 <div slot="header">
@@ -858,6 +968,29 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
 
 <!-- 7) GUÍAS DEL TOUR -->
 <GuidesSectionTour lang={lang} guias={tour.guias} />
+
+<!-- 7b) OTROS TOURS (internal linking — B06D) -->
+{relatedTours.length > 0 && (
+<section id="related-tours" class="py-14 md:py-20 bg-white border-t border-gray-100">
+  <div class="container mx-auto px-4">
+    <div class="max-w-6xl mx-auto">
+      <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight mb-8">
+        {RELATED_SECTION_TITLE[lang]}
+      </h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {relatedTours.map((related) => (
+          <a
+            href={related.href}
+            class="block bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl p-5 font-semibold text-gray-900 transition-colors"
+          >
+            {related.label}
+          </a>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+)}
 
 <!-- 8) CTA PERSISTENTE (UX PREMIUM · TOUR PAGES) -->
 <div

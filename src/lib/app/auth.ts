@@ -56,7 +56,7 @@ const ROLE_MAP: Record<string, AppUser['role']> = {
   'Super Admin':      'super_admin',
   'operations_admin': 'operations_admin',
   'Operations Admin': 'operations_admin',
-  'Authenticated':    'operations_admin',
+  'Staff':            'operations_admin',
   'staff':            'staff',
   'guide':            'guide',
   'Guide':            'guide',
@@ -76,11 +76,23 @@ export async function loginWithStrapi(
     const data = await res.json();
     if (!data.jwt || !data.user) return null;
 
+    const strapiRoleName = data.user.role?.name;
+    const mappedRole = strapiRoleName ? ROLE_MAP[strapiRoleName] : undefined;
+
+    // Fail-closed: si el rol de Strapi no mapea explícitamente a un rol
+    // de aplicación conocido (p.ej. el rol genérico "Authenticated"),
+    // se deniega la sesión por completo. Nunca se asigna un rol
+    // privilegiado por defecto.
+    if (!mappedRole) {
+      console.warn('[auth] login denied: unmapped Strapi role', strapiRoleName);
+      return null;
+    }
+
     const user: AppUser = {
       id:          data.user.id,
       email:       data.user.email,
       username:    data.user.username,
-      role:        ROLE_MAP[data.user.role?.name ?? 'Authenticated'] ?? 'operations_admin',
+      role:        mappedRole,
       strapiToken: data.jwt,
     };
 

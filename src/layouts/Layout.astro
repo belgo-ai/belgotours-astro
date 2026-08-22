@@ -23,44 +23,65 @@ const canonical = canonicalProp || `https://belgotours.com${currentUrl}`;
  */
 const isTourDetailPage = /^\/[a-z]{2}\/tours\/[^/]+\/?$/.test(currentUrl);
 
-const languages = ["es", "en", "it", "fr", "pt"];
-
-// Hreflang seguro — solo URLs reales
+// Hreflang seguro — solo URLs con contenido real en ese idioma.
+// IMPORTANTE: no confundir idioma de contenido/interfaz con idioma del tour.
+// "pt" solo se incluye donde existe contenido portugués real verificado
+// (home, /privacy) — nunca como alias silencioso de una página en español.
 const hrefPath = currentUrl.replace(/^\/[a-z]{2}/, '').replace(/\/$/, '');
 const isHomePage = hrefPath === '' || hrefPath === '/';
 const isTourPath = hrefPath.startsWith('/tours/');
 const isLegal = ['/privacy','/terms','/cookies','/legal-notice'].some(p => hrefPath.startsWith(p));
+
+// Home: contenido real verificado en las 5 (incluye pt: título, hero,
+// tours destacados, reviews, guías y footer tienen copy portugués real).
+const HOME_LANGS = ["es", "en", "it", "fr", "pt"];
+
+// Legal pages: solo /privacy tiene contenido pt real. terms/cookies/
+// legal-notice no tienen bloque `pt:` — no se ofrece esa alternativa.
+const LEGAL_LANGS: Record<string, string[]> = {
+  '/privacy': ["es", "en", "it", "fr", "pt"],
+  '/terms': ["es", "en", "it", "fr"],
+  '/cookies': ["es", "en", "it", "fr"],
+  '/legal-notice': ["es", "en", "it", "fr"],
+};
+
 const TOUR_MAP: Record<string, Record<string, string>> = {
   // Free Tour Bruselas: equivalentes reales ES/EN/IT. FR no se incluye porque no existe Free Tour francés.
-  '/tours/free-tour-bruselas':              {es:'/tours/free-tour-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles',pt:'/tours/free-tour-bruselas'},
-  '/tours/free-tour-brussels':              {es:'/tours/free-tour-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles',pt:'/tours/free-tour-brussels'},
-  '/tours/free-tour-bruxelles':             {es:'/tours/free-tour-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles',pt:'/tours/free-tour-bruxelles'},
+  // PT no se incluye: no existe contenido de tour en portugués (ver B06A).
+  '/tours/free-tour-bruselas':              {es:'/tours/free-tour-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles'},
+  '/tours/free-tour-brussels':              {es:'/tours/free-tour-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles'},
+  '/tours/free-tour-bruxelles':             {es:'/tours/free-tour-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles'},
 
-  // Free Tour Brujas: por ahora solo ES. PT apunta al ES porque el home PT muestra tours reales por idioma.
-  '/tours/free-tour-brujas':                {es:'/tours/free-tour-brujas',pt:'/tours/free-tour-brujas'},
+  // Free Tour Brujas: por ahora solo ES.
+  '/tours/free-tour-brujas':                {es:'/tours/free-tour-brujas'},
 
-  // Free Tour Cerveza: por ahora solo ES. PT apunta al ES por la misma lógica del home PT.
-  '/tours/free-tour-cerveza-bruselas':      {es:'/tours/free-tour-cerveza-bruselas',pt:'/tours/free-tour-cerveza-bruselas'},
+  // Free Tour Cerveza: por ahora solo ES.
+  '/tours/free-tour-cerveza-bruselas':      {es:'/tours/free-tour-cerveza-bruselas'},
 
   // Tour Chocolate y Cerveza: tour especial solo ES.
-  '/tours/tour-chocolate-cerveza-bruselas': {es:'/tours/tour-chocolate-cerveza-bruselas',pt:'/tours/tour-chocolate-cerveza-bruselas'},
+  '/tours/tour-chocolate-cerveza-bruselas': {es:'/tours/tour-chocolate-cerveza-bruselas'},
 
   // Tours privados Bruselas: equivalentes reales ES/EN/IT/FR.
-  '/tours/tour-privado-bruselas':           {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles',pt:'/tours/tour-privado-bruselas'},
-  '/tours/private-tour-brussels':           {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles',pt:'/tours/private-tour-brussels'},
-  '/tours/tour-privato-bruxelles':          {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles',pt:'/tours/tour-privato-bruxelles'},
-  '/tours/tour-prive-bruxelles':            {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles',pt:'/tours/tour-privado-bruselas'},
+  '/tours/tour-privado-bruselas':           {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles'},
+  '/tours/private-tour-brussels':           {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles'},
+  '/tours/tour-privato-bruxelles':          {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles'},
+  '/tours/tour-prive-bruxelles':            {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles'},
 
   // Tour privado Brujas: por ahora solo ES.
-  '/tours/tour-privado-brujas':             {es:'/tours/tour-privado-brujas',pt:'/tours/tour-privado-brujas'},
+  '/tours/tour-privado-brujas':             {es:'/tours/tour-privado-brujas'},
 };
 const slugMap = isTourPath ? (TOUR_MAP[hrefPath] ?? null) : null;
-const hreflangLinks = languages.map(lang => {
-  if (isHomePage) return {lang, href: `https://belgotours.com/${lang}/`};
-  if (isTourPath && slugMap?.[lang]) return {lang, href: `https://belgotours.com/${lang}${slugMap[lang]}`};
-  if (isLegal) return {lang, href: `https://belgotours.com/${lang}${hrefPath}`};
-  return null;
-}).filter((x): x is {lang: string; href: string} => x !== null);
+
+let hreflangLinks: {lang: string; href: string}[] = [];
+if (isHomePage) {
+  hreflangLinks = HOME_LANGS.map(lang => ({lang, href: `https://belgotours.com/${lang}/`}));
+} else if (isTourPath && slugMap) {
+  hreflangLinks = Object.entries(slugMap).map(([lang, path]) => ({lang, href: `https://belgotours.com/${lang}${path}`}));
+} else if (isLegal) {
+  const legalKey = Object.keys(LEGAL_LANGS).find(p => hrefPath.startsWith(p));
+  const legalLangs = legalKey ? LEGAL_LANGS[legalKey] : [];
+  hreflangLinks = legalLangs.map(lang => ({lang, href: `https://belgotours.com/${lang}${hrefPath}`}));
+}
 ---
 
 

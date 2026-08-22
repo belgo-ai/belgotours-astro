@@ -7,6 +7,18 @@ import Footer from "@/components/Footer.astro";
 
 const { lang } = Astro.params;
 
+// Solo existe contenido real es/en/it/fr (sin bloque `pt:` abajo).
+// Ningún idioma no soportado (incluido "pt", y cualquier código
+// arbitrario como "de"/"xx") debe servir el fallback inglés
+// disfrazado de otro idioma vía html lang (B06A / item 6).
+if (!lang || !["es", "en", "it", "fr"].includes(lang)) {
+  return new Response(null, { status: 404 });
+}
+
+// Canonical fijo, sin trailing slash (política de páginas hoja —
+// B06C). Ver terms.astro para el detalle del bug que corrige.
+const canonical = `https://belgotours.com/${lang}/legal-notice`;
+
 const t = {
   es: {
     title: "Aviso Legal | BelgoTours",
@@ -108,7 +120,7 @@ const t = {
 const copy = t[lang] || t.en;
 ---
 
-<Layout title={copy.title}>
+<Layout title={copy.title} canonical={canonical}>
   <TourHeader simple />
 
   <main class="bg-white">

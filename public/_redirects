@@ -47,11 +47,14 @@ https://reservas.belgotours.com/*   https://belgotours.com/es/   301!
 /it/tours/free-tour-brussels/             /it/tours/free-tour-bruxelles       301
 /it/tours/free-tour-brussels              /it/tours/free-tour-bruxelles       301
 
-# Brujas en idioma incorrecto
-/fr/tours/free-tour-brujas/               /fr/tours/tour-prive-bruxelles      301
-/fr/tours/free-tour-brujas                /fr/tours/tour-prive-bruxelles      301
-/en/tours/free-tour-brujas/               /en/tours/free-tour-brussels        301
-/en/tours/free-tour-brujas                /en/tours/free-tour-brussels        301
+# NOTA (B06C, 2026-08-22): esta sección "Brujas en idioma incorrecto"
+# redirigía URLs legacy que nombraban explícitamente un tour de Brujas
+# (free-tour-brujas / tour-privado-brujas en EN/FR) hacia el tour
+# equivalente de BRUSELAS (LEGACY-001/mismo patrón) — mezcla ciudad
+# incorrecta. No existe contenido real de Brujas en EN/FR (el único
+# tour real de Brujas es en español). Eliminadas: ahora estas rutas
+# devuelven 404 real en vez de una redirección engañosa hacia la
+# ciudad equivocada (ver CURRENT_GATE.md / BACKLOG.md, LEGACY-001).
 
 # ======================================
 # TOUR CHOCOLATE — slugs cruzados
@@ -79,10 +82,9 @@ https://reservas.belgotours.com/*   https://belgotours.com/es/   301!
 /it/tours/private-tour-brussels           /it/tours/tour-privato-bruxelles    301
 /en/tours/tour-privado-bruselas/          /en/tours/private-tour-brussels     301
 /en/tours/tour-privado-bruselas           /en/tours/private-tour-brussels     301
-/en/tours/tour-privado-brujas/            /en/tours/private-tour-brussels     301
-/en/tours/tour-privado-brujas             /en/tours/private-tour-brussels     301
-/fr/tours/tour-privado-brujas/            /fr/tours/tour-prive-bruxelles      301
-/fr/tours/tour-privado-brujas             /fr/tours/tour-prive-bruxelles      301
+# tour-privado-brujas (EN/FR) eliminadas por B06C — mismo mismapeo de
+# ciudad que la sección "Brujas en idioma incorrecto" de arriba, sin
+# contenido real de Brujas en esos idiomas. Ver LEGACY-001.
 
 # Rutas /tour/ sin /tours/
 /tour/free-tour-brujas/                   /es/tours/free-tour-brujas          301
@@ -114,7 +116,9 @@ https://reservas.belgotours.com/*   https://belgotours.com/es/   301!
 # ======================================
 /descubre-brujas-free-tours-y-tours-privados-para-explorar-la-ciudad-de-los-canales/blog         /es/tours/free-tour-brujas   301
 /descubre-brujas-free-tours-y-tours-privados-para-explorar-la-ciudad-de-los-canales/tours/tour-chocolate-cerveza-bruselas   /es/tours/tour-chocolate-cerveza-bruselas   301
-/itscubre-brujas-free-tours-y-tours-privados-para-explorar-la-ciudad-de-los-canales/blog         /it/tours/free-tour-bruxelles   301
+# itscubre-brujas.../blog eliminada por B06C — la URL nombra "Brujas"
+# ("ciudad de los canales") y redirigía a un tour de BRUSELAS en IT
+# sin contenido real de Brujas en italiano. Ver LEGACY-001.
 /itscubre-brujas-free-tours-y-tours-privados-para-explorar-la-ciudad-de-los-canales/contacto     /it/   301
 /enscubre-brujas-free-tours-y-tours-privados-para-explorar-la-ciudad-de-los-canales/contacto     /en/   301
 /preguntas-frecuentes-sobre-free-tours-y-tours-privados-en-brujas/blog                           /es/   301
@@ -138,20 +142,21 @@ https://reservas.belgotours.com/*   https://belgotours.com/es/   301!
 /fr/politique-de-confidentialite/         /fr/privacy                         301
 
 # Tours de ciudades que no existen
-/free-tour-gante/                         /es/                                301
-/tour-privado-gante/                      /es/tours/tour-privado-bruselas     301
-/fr/free-tour-de-gand/                    /fr/                                301
-/en/free-tour-bruges/                     /en/tours/free-tour-brussels        301
+# NOTA (B06C, 2026-08-22): free-tour-gante / tour-privado-gante /
+# free-tour-de-gand / free-tour-bruges / private-tour-of-ghent /
+# .../private-tours-in-bruges nombraban explícitamente Gante o Brujas
+# (ciudad distinta de Bruselas, sin producto real en esos idiomas) y
+# redirigían (algunas incluso a un genérico "/es/"/"/fr/" tipo
+# soft-404) a contenido de Bruselas o a home — mismapeo de ciudad
+# (LEGACY-001) o soft-404 encubierto. Eliminadas: ahora 404 real.
 /en/alternative-tour-of-the-marolles-district/   /en/tours/free-tour-brussels   301
 /fr/visite-privee-de-bruxelles/           /fr/tours/tour-prive-bruxelles      301
 /fr/visite-privee-des-marolles/           /fr/tours/tour-prive-bruxelles      301
 /fr/visite-privee-du-quartier-europeen/   /fr/tours/tour-prive-bruxelles      301
 /fr/free-tour-de-bruxelles/               /fr/tours/tour-prive-bruxelles      301
-/en/private-tour-of-ghent/               /en/tours/private-tour-brussels     301
 /fr/tour-privado-amberes/                 /fr/                                301
 /en/what-to-see-and-do-in-brussels-discover-the-must-visit-spots-for-your-trip/   /en/tours/free-tour-brussels   301
 /en/descubre-bruselas-con-nuestros-free-tours-la-mejor-forma-de-conocer-la-ciudad/   /en/tours/free-tour-brussels   301
-/en/frequently-asked-questions-about-free-tours-and-private-tours-in-bruges/   /en/tours/free-tour-brussels   301
 /fr/decouvrez-bruxelles-avec-nos-free-tours-la-meilleure-facon-de-decouvrir-la-ville/   /fr/tours/tour-prive-bruxelles   301
 /it/free-tour-di-bruxelles-in-italiano/   /it/tours/free-tour-bruxelles       301
 
@@ -179,11 +184,20 @@ https://reservas.belgotours.com/*   https://belgotours.com/es/   301!
 # ======================================
 # PARTNERS (URLs antiguas)
 # ======================================
-/partners/                   /es/b2b-collaboration-belgium/    301
-/it/partners/                /it/b2b-collaboration-belgium/    301
-/fr/partners/                /fr/b2b-collaboration-belgium/    301
+# Targets sin trailing slash (B06C) — coincide con el canonical fijo
+# de b2b-collaboration-belgium.astro y con la URL exacta del sitemap.
+/partners/                   /es/b2b-collaboration-belgium    301
+/it/partners/                /it/b2b-collaboration-belgium    301
+/fr/partners/                /fr/b2b-collaboration-belgium    301
 
 # ======================================
-# PT sin trailing slash
+# NOTA (B06A, 2026-08-22): existía aquí una regla
+# "/pt -> /pt/ 301" que causaba un bucle de redirección infinito real
+# en producción: Netlify normaliza el trailing slash del lado "from" de
+# la regla, por lo que también coincidía con "/pt/" (ya con slash) y lo
+# redirigía a sí mismo. Ninguna otra ruta raíz de idioma (es/en/it/fr)
+# tenía una regla equivalente — ya funcionan sin ella porque
+# trailingSlash:'ignore' en astro.config.mjs + el adapter de Netlify
+# sirven la función SSR igual con o sin slash. Eliminada por ser
+# redundante y ser la causa raíz del bucle (ver CURRENT_GATE.md, B06A).
 # ======================================
-/pt                          /pt/        301

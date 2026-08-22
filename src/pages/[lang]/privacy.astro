@@ -7,6 +7,16 @@ import Footer from "@/components/Footer.astro";
 
 const { lang } = Astro.params as { lang: "es" | "en" | "it" | "fr" | "pt" };
 
+// Único idioma no soportado no debe servir el fallback inglés
+// disfrazado vía html lang (B06A / item 6). pt sí es real aquí.
+if (!lang || !["es", "en", "it", "fr", "pt"].includes(lang)) {
+  return new Response(null, { status: 404 });
+}
+
+// Canonical fijo, sin trailing slash (política de páginas hoja —
+// B06C). Ver terms.astro para el detalle del bug que corrige.
+const canonical = `https://belgotours.com/${lang}/privacy`;
+
 const t = {
   es: {
     title: "Política de Privacidad | BelgoTours",
@@ -195,7 +205,7 @@ const t = {
 const copy = t[lang] || t.en;
 ---
 
-<Layout title={copy.title}>
+<Layout title={copy.title} canonical={canonical}>
   <TourHeader simple />
 
   <main class="bg-white">

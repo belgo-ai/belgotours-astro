@@ -7,6 +7,17 @@ import Footer from "@/components/Footer.astro";
 
 const { lang } = Astro.params;
 
+// Solo existe contenido real es/en/it/fr (sin bloque `pt:` abajo).
+// Ningún idioma no soportado debe servir el fallback inglés
+// disfrazado de otro idioma vía html lang (B06A / item 6).
+if (!lang || !["es", "en", "it", "fr"].includes(lang)) {
+  return new Response(null, { status: 404 });
+}
+
+// Canonical fijo, sin trailing slash — coincide con la URL exacta ya
+// presente en el sitemap oficial (política de páginas hoja — B06C).
+const canonical = `https://belgotours.com/${lang}/b2b-collaboration-belgium`;
+
 const t = {
   en: {
     title: "B2B Tour Operator in Belgium | BelgoTours",
@@ -166,7 +177,7 @@ const copy = t[lang] || t.en;
 
 
 
-<Layout title={copy.title} description={copy.description}>
+<Layout title={copy.title} description={copy.description} canonical={canonical}>
   <TourHeader simple />
 
   <main class="bg-white">
