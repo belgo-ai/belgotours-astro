@@ -62,22 +62,22 @@ const ROLE_MAP: Record<string, AppUser['role']> = {
   'Guide':            'guide',
 };
 
-// Producción, 2026-08-23 — hotfix: el endpoint estándar de Strapi
-// POST /api/auth/local (users-permissions, sin overrides en este
-// proyecto) NUNCA popula la relación `role` en su respuesta — es su
-// comportamiento de fábrica, confirmado leyendo el propio código
-// fuente del plugin instalado. `data.user.role` siempre era
-// `undefined`, así que el fail-closed introducido en d192bc7 rechazaba
-// la sesión de CUALQUIER usuario con CUALQUIER contraseña correcta —
-// no era un problema de credenciales. Fix: pedir el rol por separado,
-// ya autenticado, al único endpoint que sí lo popula bajo demanda.
+// Producción, 2026-08-23 — fix definitivo: POST /api/auth/local NUNCA
+// popula `role` (comportamiento de fábrica de users-permissions), y el
+// hotfix intermedio (`GET /users/me?populate=role`) tampoco alcanza —
+// el sanitizador de contentAPI retira la relación `role` igual porque
+// el rol Staff no tiene el permiso plugin::users-permissions.role.find,
+// aunque la consulta sí la popule. Fuente única canónica: el endpoint
+// propio /api/me-role, que consulta el rol server-side con
+// strapi.db.query (sin pasar por ese sanitizador) y sólo puede
+// devolver el rol de quien ya demostró tener un JWT válido.
 async function fetchAuthenticatedRole(jwt: string): Promise<string | undefined> {
-  const res = await fetch(`${STRAPI_URL}/api/users/me?populate=role`, {
+  const res = await fetch(`${STRAPI_URL}/api/me-role`, {
     headers: { Authorization: `Bearer ${jwt}` },
   });
   if (!res.ok) return undefined;
-  const me = await res.json();
-  return me?.role?.name;
+  const data = await res.json();
+  return data?.role ?? undefined;
 }
 
 export async function loginWithStrapi(
