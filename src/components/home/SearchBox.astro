@@ -20,11 +20,11 @@ interface Props {
 const { lang, title, subtitle, tours = [] } = Astro.props;
 
 const TEXTS = {
-  es: { cityLabel: "¿A qué ciudad vas?", langLabel: "¿En qué idioma quieres el tour?", toursLabel: "Elige tu tour", cities: { brussels: "Bruselas", bruges: "Brujas", antwerp: "Amberes (próximamente)", leuven: "Lovaina (próximamente)" }, kinds: { free: "Free Tour", private: "Tour Privado", special: "Tour Especial" }, free: "Pago libre", perPerson: "por persona", perGroup: "por grupo", noTours: "No hay tours para este idioma. Prueba con otro." },
-  en: { cityLabel: "Which city?", langLabel: "Which language?", toursLabel: "Choose your tour", cities: { brussels: "Brussels", bruges: "Bruges", antwerp: "Antwerp (coming soon)", leuven: "Leuven (coming soon)" }, kinds: { free: "Free Tour", private: "Private Tour", special: "Special Tour" }, free: "Pay what you want", perPerson: "per person", perGroup: "per group", noTours: "No tours for this language. Try another." },
-  it: { cityLabel: "Quale città?", langLabel: "In che lingua?", toursLabel: "Scegli il tuo tour", cities: { brussels: "Bruxelles", bruges: "Bruges", antwerp: "Anversa (presto)", leuven: "Lovanio (presto)" }, kinds: { free: "Free Tour", private: "Tour Privato", special: "Tour Speciale" }, free: "Prezzo libero", perPerson: "a persona", perGroup: "per gruppo", noTours: "Nessun tour per questa lingua." },
-  fr: { cityLabel: "Quelle ville?", langLabel: "Quelle langue?", toursLabel: "Choisissez votre visite", cities: { brussels: "Bruxelles", bruges: "Bruges", antwerp: "💎 Anvers (bientôt)", leuven: "🍺 Louvain (bientôt)" }, kinds: { free: "Free Tour", private: "Tour Privé", special: "Tour Spécial" }, free: "Contribution libre", perPerson: "par personne", perGroup: "par groupe", noTours: "Aucun tour pour cette langue." },
-  pt: { cityLabel: "Qual cidade?", langLabel: "Em que idioma?", toursLabel: "Escolha seu tour", cities: { brussels: "Bruxelas", bruges: "Bruges", antwerp: "Antuérpia (em breve)", leuven: "Lovaina (em breve)" }, kinds: { free: "Free Tour", private: "Tour Privado", special: "Tour Especial" }, free: "Preço livre", perPerson: "por pessoa", perGroup: "por grupo", noTours: "Nenhum tour para este idioma." },
+  es: { cityLabel: "¿A qué ciudad vas?", langLabel: "¿En qué idioma quieres el tour?", toursLabel: "Elige tu tour", comingSoonLabel: "Próximamente:", cities: { brussels: "Bruselas", bruges: "Brujas", antwerp: "Amberes", leuven: "Lovaina" }, kinds: { free: "Free Tour", private: "Tour Privado", special: "Tour Especial" }, free: "Pago libre", perPerson: "por persona", perGroup: "por grupo", noTours: "No hay tours para este idioma. Prueba con otro." },
+  en: { cityLabel: "Which city?", langLabel: "Which language?", toursLabel: "Choose your tour", comingSoonLabel: "Coming soon:", cities: { brussels: "Brussels", bruges: "Bruges", antwerp: "Antwerp", leuven: "Leuven" }, kinds: { free: "Free Tour", private: "Private Tour", special: "Special Tour" }, free: "Pay what you want", perPerson: "per person", perGroup: "per group", noTours: "No tours for this language. Try another." },
+  it: { cityLabel: "Quale città?", langLabel: "In che lingua?", toursLabel: "Scegli il tuo tour", comingSoonLabel: "Presto:", cities: { brussels: "Bruxelles", bruges: "Bruges", antwerp: "Anversa", leuven: "Lovanio" }, kinds: { free: "Free Tour", private: "Tour Privato", special: "Tour Speciale" }, free: "Prezzo libero", perPerson: "a persona", perGroup: "per gruppo", noTours: "Nessun tour per questa lingua." },
+  fr: { cityLabel: "Quelle ville?", langLabel: "Quelle langue?", toursLabel: "Choisissez votre visite", comingSoonLabel: "Bientôt :", cities: { brussels: "Bruxelles", bruges: "Bruges", antwerp: "Anvers", leuven: "Louvain" }, kinds: { free: "Free Tour", private: "Tour Privé", special: "Tour Spécial" }, free: "Contribution libre", perPerson: "par personne", perGroup: "par groupe", noTours: "Aucun tour pour cette langue." },
+  pt: { cityLabel: "Qual cidade?", langLabel: "Em que idioma?", toursLabel: "Escolha seu tour", comingSoonLabel: "Em breve:", cities: { brussels: "Bruxelas", bruges: "Bruges", antwerp: "Antuérpia", leuven: "Lovaina" }, kinds: { free: "Free Tour", private: "Tour Privado", special: "Tour Especial" }, free: "Preço livre", perPerson: "por pessoa", perGroup: "por grupo", noTours: "Nenhum tour para este idioma." },
 };
 
 const t = TEXTS[lang] ?? TEXTS.es;
@@ -51,23 +51,28 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
       {t.cityLabel}
     </div>
     <div class="grid grid-cols-2 gap-2" id="sb-cities">
-      {ALL_CITIES.map(city => {
-        const isFuture = city === "antwerp" || city === "leuven";
-        return (
-          <button
-            type="button"
-            data-city={city}
-            disabled={isFuture}
-            class:list={[
-              "city-btn text-left px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all duration-150",
-              city === "brussels" ? "border-yellow-400 bg-yellow-50 text-neutral-900" : "border-neutral-200 bg-white text-neutral-700",
-              isFuture ? "opacity-40 cursor-not-allowed" : "hover:border-yellow-300 hover:bg-yellow-50 cursor-pointer"
-            ]}
-          >
-            {t.cities[city]}
-          </button>
-        );
-      })}
+      {ALL_CITIES.filter(city => city === "brussels" || city === "bruges").map(city => (
+        <button
+          type="button"
+          data-city={city}
+          aria-pressed={city === "brussels" ? "true" : "false"}
+          class:list={[
+            "city-btn text-left px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all duration-150",
+            city === "brussels" ? "border-yellow-400 bg-yellow-50 text-neutral-900" : "border-neutral-200 bg-white text-neutral-700",
+            "hover:border-yellow-300 hover:bg-yellow-50 cursor-pointer"
+          ]}
+        >
+          {t.cities[city]}
+        </button>
+      ))}
+    </div>
+    <!-- Ciudades futuras: agrupadas, secundarias — no ocupan el mismo
+         peso visual que las reservables (B09 Home Discovery UX) -->
+    <div class="mt-2 text-xs text-neutral-400 flex flex-wrap gap-x-1.5">
+      <span>{t.comingSoonLabel}</span>
+      <span>{t.cities.antwerp}</span>
+      <span aria-hidden="true">·</span>
+      <span>{t.cities.leuven}</span>
     </div>
   </div>
 
@@ -76,21 +81,21 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
     <div class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">
       {t.langLabel}
     </div>
-    <div class="flex gap-3 flex-wrap" id="sb-langs">
+    <div class="flex gap-2 flex-wrap" id="sb-langs">
       {ALL_LANGS.map(code => (
         <button
           type="button"
           data-lang={code}
-          aria-label={LANG_META[code].label}
-          title={LANG_META[code].label}
+          aria-pressed={code === defaultLang ? "true" : "false"}
           class:list={[
-            "lang-btn w-12 h-12 rounded-full border-2 text-2xl flex items-center justify-center transition-all duration-150",
+            "lang-btn flex items-center gap-1.5 pl-2 pr-3 py-2 rounded-full border-2 text-sm font-medium transition-all duration-150",
             code === defaultLang
-              ? "border-yellow-400 ring-2 ring-yellow-300 scale-110"
-              : "border-neutral-200 hover:border-yellow-300 hover:scale-105"
+              ? "border-yellow-400 ring-2 ring-yellow-300 bg-yellow-50 text-neutral-900"
+              : "border-neutral-200 text-neutral-700 hover:border-yellow-300 hover:bg-yellow-50"
           ]}
         >
-          {LANG_META[code].flag}
+          <span class="text-xl" aria-hidden="true">{LANG_META[code].flag}</span>
+          <span>{LANG_META[code].label}</span>
         </button>
       ))}
     </div>
@@ -194,15 +199,16 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
   // Ciudad
   cityBtns.forEach(btn => {
     btn.addEventListener("click", () => {
-      if (btn.disabled) return;
       selectedCity = btn.dataset.city;
 
       cityBtns.forEach(b => {
-        b.classList.remove("border-yellow-400", "bg-yellow-50");
-        b.classList.add("border-neutral-200", "bg-white");
+        b.classList.remove("border-yellow-400", "bg-yellow-50", "text-neutral-900");
+        b.classList.add("border-neutral-200", "bg-white", "text-neutral-700");
+        b.setAttribute("aria-pressed", "false");
       });
-      btn.classList.add("border-yellow-400", "bg-yellow-50");
-      btn.classList.remove("border-neutral-200", "bg-white");
+      btn.classList.add("border-yellow-400", "bg-yellow-50", "text-neutral-900");
+      btn.classList.remove("border-neutral-200", "bg-white", "text-neutral-700");
+      btn.setAttribute("aria-pressed", "true");
 
       renderTours();
 
@@ -217,11 +223,13 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
       selectedLang = btn.dataset.lang;
 
       langBtns.forEach(b => {
-        b.classList.remove("border-yellow-400", "ring-2", "ring-yellow-300", "scale-110");
-        b.classList.add("border-neutral-200");
+        b.classList.remove("border-yellow-400", "ring-2", "ring-yellow-300", "bg-yellow-50", "text-neutral-900");
+        b.classList.add("border-neutral-200", "text-neutral-700");
+        b.setAttribute("aria-pressed", "false");
       });
-      btn.classList.add("border-yellow-400", "ring-2", "ring-yellow-300", "scale-110");
-      btn.classList.remove("border-neutral-200");
+      btn.classList.add("border-yellow-400", "ring-2", "ring-yellow-300", "bg-yellow-50", "text-neutral-900");
+      btn.classList.remove("border-neutral-200", "text-neutral-700");
+      btn.setAttribute("aria-pressed", "true");
 
       renderTours();
     });

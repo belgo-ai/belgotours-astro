@@ -6,6 +6,24 @@ interface Props {
 
 const { lang } = Astro.props;
 
+// B09 Gate 12 — dimensiones reales medidas (PIL) de cada archivo local
+// en public/images/ToursDestacados/. Necesarias para width/height
+// (CLS) y para saber qué ratio real tiene cada foto antes de decidir
+// cualquier crop — ver hallazgos en CRO_UX_AUDIT.md.
+const IMAGE_DIMENSIONS: Record<string, { w: number; h: number }> = {
+  "/images/ToursDestacados/free-tour-brujas-en-espanol-belgotours.webp": { w: 4032, h: 3024 },
+  "/images/ToursDestacados/free-tour-cerveza-bruselas-belgotours.webp": { w: 800, h: 533 },
+  "/images/ToursDestacados/free-tour-english-brussels-belgotours.webp": { w: 680, h: 450 },
+  "/images/ToursDestacados/free-tour-espanol-bruselas-belgotours.webp": { w: 680, h: 450 },
+  "/images/ToursDestacados/free-tour-italiano-bruxelles-belgotours.webp": { w: 680, h: 450 },
+  "/images/ToursDestacados/private-tour-brussels-english-belgotours.webp": { w: 600, h: 337 },
+  "/images/ToursDestacados/tour-chocolate-y-cerveza-en-espanol-bruselas.webp": { w: 1600, h: 1200 },
+  "/images/ToursDestacados/tour-privado-brujas-espanol-belgotours.webp": { w: 600, h: 337 },
+  "/images/ToursDestacados/tour-privado-bruselas-espanol-belgotours.webp": { w: 600, h: 337 },
+  "/images/ToursDestacados/tour-privato-bruxelles-italiano-belgotours.webp": { w: 600, h: 337 },
+  "/images/ToursDestacados/tour-prive-bruxelles-francais-belgotours.webp": { w: 600, h: 337 },
+};
+
 // Fetch ratings reales desde Strapi
 const STRAPI_API = import.meta.env.PUBLIC_STRAPI_URL || "https://api.belgotours.com/api";
 const safeLangForFetch = ['es','en','it','fr'].includes(lang) ? lang : 'es';
@@ -577,6 +595,10 @@ const getTourUrl = (tourSlug: string, lang: string, tourIdiomas: string[]) => {
         <img
           src={tour.imagen}
           alt={tour.alt || tour.titulo}
+          width={IMAGE_DIMENSIONS[tour.imagen]?.w || undefined}
+          height={IMAGE_DIMENSIONS[tour.imagen]?.h || undefined}
+          loading="lazy"
+          decoding="async"
           class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div class="absolute inset-0 bg-black/10"></div>

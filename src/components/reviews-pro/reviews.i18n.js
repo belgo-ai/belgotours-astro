@@ -18,6 +18,9 @@ export const REVIEWS_I18N = {
     noReviews: "Aún no hay reseñas públicas para este tour en este idioma.",
     readMore: "Leer más",
     readLess: "Ver menos",
+    seeAll: (n) => `Ver todas las reseñas (${n})`,
+    showingAll: (n) => `Mostrando las ${n} reseñas`,
+    loadingMore: "Cargando más reseñas…",
   },
   en: {
     title: "Reviews",
@@ -36,6 +39,9 @@ export const REVIEWS_I18N = {
     noReviews: "No public reviews yet for this tour in this language.",
     readMore: "Read more",
     readLess: "Show less",
+    seeAll: (n) => `See all reviews (${n})`,
+    showingAll: (n) => `Showing all ${n} reviews`,
+    loadingMore: "Loading more reviews…",
   },
   it: {
     title: "Recensioni",
@@ -54,6 +60,9 @@ export const REVIEWS_I18N = {
     noReviews: "Non ci sono ancora recensioni pubbliche per questo tour in questa lingua.",
     readMore: "Leggi di più",
     readLess: "Mostra meno",
+    seeAll: (n) => `Vedi tutte le recensioni (${n})`,
+    showingAll: (n) => `Mostrando tutte le ${n} recensioni`,
+    loadingMore: "Caricamento di altre recensioni…",
   },
   fr: {
     title: "Avis",
@@ -72,5 +81,8 @@ export const REVIEWS_I18N = {
     noReviews: "Pas encore d’avis publics pour ce tour dans cette langue.",
     readMore: "Lire plus",
     readLess: "Voir moins",
+    seeAll: (n) => `Voir tous les avis (${n})`,
+    showingAll: (n) => `Affichage des ${n} avis`,
+    loadingMore: "Chargement d’avis supplémentaires…",
   },
 };

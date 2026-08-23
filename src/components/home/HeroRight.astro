@@ -78,9 +78,11 @@ const t = TEXTS[lang] ?? TEXTS.es;
       <img
         src={imageUrl}
         alt={t.alt}
+        width="768"
+        height="768"
         loading="lazy"
         decoding="async"
-        class="w-full h-full object-cover"
+        class="w-full h-full object-cover object-[50%_30%]"
       />
       <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent"></div>
     </div>

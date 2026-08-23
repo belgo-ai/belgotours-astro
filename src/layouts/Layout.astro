@@ -9,6 +9,11 @@ interface Props {
   description?: string;
   canonical?: string;
   noindex?: boolean;
+  // Aceptado por varias páginas utilitarias (booking-success,
+  // booking-edit, booking-cancel) — Layout deriva su propio
+  // currentLang de la URL y no lo usa, pero el tipo debe reflejar el
+  // uso real para no generar falsos errores de tipo (B09 Gate 11).
+  lang?: string;
 }
 
 const { title, description, canonical: canonicalProp, noindex = false } = Astro.props;
@@ -118,11 +123,19 @@ if (isHomePage) {
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content={`https://belgotours.com${currentUrl}`} />
-    <meta property="og:image" content="https://belgotours.com/og-image.jpg" />
+    <!-- B09 Gate 12: /og-image.jpg no existe — 404 confirmado en
+         producción, cada share social del sitio entero mostraba
+         imagen rota. Sustituido por una foto real ya en vivo en Home
+         (Grand Place + paraguas amarillo BelgoTours real), sin
+         inventar ni generar nada nuevo. -->
+    <meta property="og:image" content="https://belgotours.com/images/ToursDestacados/free-tour-espanol-bruselas-belgotours.webp" />
+    <meta property="og:image:width" content="680" />
+    <meta property="og:image:height" content="450" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content="https://belgotours.com/images/ToursDestacados/free-tour-espanol-bruselas-belgotours.webp" />
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 

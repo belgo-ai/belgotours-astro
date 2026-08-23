@@ -75,8 +75,9 @@ const posts = articles[safeLang] || articles.es;
            class="group bg-white rounded-2xl border border-neutral-200 overflow-hidden hover:shadow-lg transition-shadow">
           <div class="h-48 overflow-hidden">
             <img src={post.image} alt={post.title}
+                 width="1920" height="1080"
                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                 loading="lazy" />
+                 loading="lazy" decoding="async" />
           </div>
           <div class="p-5">
             <p class="text-xs text-neutral-400 mb-2">{new Date(post.date).toLocaleDateString(safeLang === 'en' ? 'en-GB' : safeLang === 'it' ? 'it-IT' : safeLang === 'fr' ? 'fr-FR' : 'es-ES', {day:'numeric',month:'long',year:'numeric'})}</p>

@@ -54,6 +54,12 @@ const TEXTS: Record<
     selectTime: string;
     noTimes: string;
     maxPeople: string;
+    calendarOpenLabel: string;
+    calendarCloseLabel: string;
+    legendAvailable: string;
+    legendToday: string;
+    prevMonth: string;
+    nextMonth: string;
   }
 > = {
   es: {
@@ -61,24 +67,48 @@ const TEXTS: Record<
     selectTime: "Selecciona un horario",
     noTimes: "No hay horarios para esta fecha",
     maxPeople: "Plazas disponibles",
+    calendarOpenLabel: "Ver calendario completo",
+    calendarCloseLabel: "Ocultar calendario",
+    legendAvailable: "Disponible",
+    legendToday: "Hoy",
+    prevMonth: "Mes anterior",
+    nextMonth: "Mes siguiente",
   },
   en: {
     selectDate: "Select a date",
     selectTime: "Select a time",
     noTimes: "No times available for this date",
     maxPeople: "Available spots",
+    calendarOpenLabel: "See full calendar",
+    calendarCloseLabel: "Hide calendar",
+    legendAvailable: "Available",
+    legendToday: "Today",
+    prevMonth: "Previous month",
+    nextMonth: "Next month",
   },
   it: {
     selectDate: "Seleziona una data",
     selectTime: "Seleziona un orario",
     noTimes: "Nessun orario disponibile per questa data",
     maxPeople: "Posti disponibili",
+    calendarOpenLabel: "Vedi calendario completo",
+    calendarCloseLabel: "Nascondi calendario",
+    legendAvailable: "Disponibile",
+    legendToday: "Oggi",
+    prevMonth: "Mese precedente",
+    nextMonth: "Mese successivo",
   },
   fr: {
     selectDate: "Choisissez une date",
     selectTime: "Choisissez un horaire",
     noTimes: "Aucun horaire disponible pour cette date",
     maxPeople: "Places disponibles",
+    calendarOpenLabel: "Voir le calendrier complet",
+    calendarCloseLabel: "Masquer le calendrier",
+    legendAvailable: "Disponible",
+    legendToday: "Aujourd'hui",
+    prevMonth: "Mois précédent",
+    nextMonth: "Mois suivant",
   },
 };
 
@@ -257,30 +287,73 @@ const lastDate = fechasDisponibles[fechasDisponibles.length - 1] ?? firstDate;
     {texts.selectDate}
   </label>
 
-  <!-- Pills rápidas -->
-  <div
-  id="quickDates"
-  class="flex gap-2 overflow-x-auto md:flex-wrap md:overflow-visible no-scrollbar scroll-smooth"
-  style="scroll-snap-type: x mandatory;"
-></div>
+  <!-- Pills rápidas (con fade de borde para insinuar scroll horizontal) -->
+  <div class="relative">
+    <div
+    id="quickDates"
+    class="flex gap-2 overflow-x-auto md:flex-wrap md:overflow-visible no-scrollbar scroll-smooth"
+    style="scroll-snap-type: x mandatory;"
+  ></div>
+    <div class="quick-dates-fade md:hidden" aria-hidden="true"></div>
+  </div>
 
-  <!-- Toggle ver más -->
+  <!-- Toggle calendario visual -->
   <button
   type="button"
   id="toggleCalendar"
+  aria-expanded="false"
+  aria-controls="calendarPanel"
+  data-label-open={texts.calendarOpenLabel}
+  data-label-close={texts.calendarCloseLabel}
   class="mt-2 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:border-yellow-400 hover:bg-yellow-50 transition"
 >
-    {lang === "es" && "Ver más fechas"}
-    {lang === "en" && "See more dates"}
-    {lang === "it" && "Vedi più date"}
-    {lang === "fr" && "Voir plus de dates"}
+    {texts.calendarOpenLabel}
   </button>
 
-  <!-- Date picker oculto -->
+  <!-- Calendario visual compacto: sólo se conocen como AVAILABLE las
+       fechas presentes en fechasDisponibles (dato real, ya calculado
+       en SSR sobre el total de horarios futuros, sin muestreo) — todo
+       lo demás dentro del rango se marca UNAVAILABLE, nunca inventado -->
+  <div
+    id="calendarPanel"
+    class="hidden mt-3 border border-gray-200 rounded-2xl p-4 bg-white shadow-sm max-w-xs"
+    role="group"
+    aria-label={texts.selectDate}
+  >
+    <div class="flex items-center justify-between mb-3">
+      <button
+        type="button"
+        id="calendarPrevMonth"
+        aria-label={texts.prevMonth}
+        class="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+      >‹</button>
+      <span id="calendarMonthLabel" class="font-semibold text-gray-800 text-sm capitalize"></span>
+      <button
+        type="button"
+        id="calendarNextMonth"
+        aria-label={texts.nextMonth}
+        class="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+      >›</button>
+    </div>
+    <div id="calendarGrid" class="grid grid-cols-7 gap-1" role="grid"></div>
+    <div class="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100 text-[11px] text-gray-500">
+      <span class="flex items-center gap-1">
+        <span class="w-1.5 h-1.5 rounded-full bg-yellow-500 inline-block" aria-hidden="true"></span>
+        {texts.legendAvailable}
+      </span>
+      <span class="flex items-center gap-1">
+        <span class="w-2.5 h-2.5 rounded ring-2 ring-gray-400 inline-block" aria-hidden="true"></span>
+        {texts.legendToday}
+      </span>
+    </div>
+  </div>
+
+  <!-- Estado interno de fecha seleccionada — nunca visible, la UI real
+       es quickDates + calendarPanel -->
   <input
     id="fechaPicker"
     type="date"
-    class="hidden w-full md:w-auto border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+    class="hidden"
     value={firstDate}
     min={firstDate}
     max={lastDate}
@@ -368,31 +441,120 @@ function formatShortDate(dateStr: string): string {
   });
 }
 
+// Único cálculo de "qué fechas son realmente reservables" — usado
+// tanto por las quick dates como por el calendario visual, para que
+// ambos coincidan siempre (B09 Gate 8).
+function computeValidDates(): string[] {
+  const todayStr = brusselsTodayISO();
+
+  let validDates = [...fechasDisponibles];
+
+  // 🔥 comprobar si hoy aún tiene horarios futuros (Europe/Brussels)
+  const todayHasFutureTimes = horarios.some((h: any) => {
+    if (h.fecha !== todayStr) return false;
+    return isSlotBookable(h.fecha, h.hora);
+  });
+
+  // si hoy no tiene horarios futuros → eliminarlo
+  if (!todayHasFutureTimes) {
+    validDates = validDates.filter((f) => f !== todayStr);
+  }
+
+  // cualquier fecha estrictamente anterior a "hoy" en Brussels nunca es
+  // válida, aunque llegara en fechasDisponibles por alguna vía
+  // (defensa en profundidad además del filtro SSR)
+  return validDates.filter((f) => f >= todayStr);
+}
+
+// Selección de fecha unificada — quick dates, calendario visual y
+// selección inicial pasan todos por aquí, para que el estado de
+// reserva nunca quede contradictorio entre fecha y horario (B09 Gate
+// 8, §11): cambiar de fecha SIEMPRE invalida cualquier horario
+// previamente elegido, sin depender del evento "change" de un
+// <input type="date"> que ya no es visible ni interactivo.
+function selectDate(fecha: string, isInitial: boolean) {
+  fechaPicker.value = fecha;
+
+  const state = ((window as any).bookingState = (window as any).bookingState || {});
+  state.selectedDate = null;
+  state.selectedTime = null;
+  state.horarioId = null;
+  (window as any).updateBookingNavigation?.();
+
+  document
+    .querySelectorAll("#quickDates button")
+    .forEach((el) => el.classList.remove("border-yellow-400", "bg-yellow-100"));
+
+  const matchingQuickBtn = quickDatesContainer?.querySelector(
+    `button[data-date="${fecha}"]`
+  ) as HTMLElement | null;
+
+  if (matchingQuickBtn) {
+    matchingQuickBtn.classList.add("border-yellow-400", "bg-yellow-100");
+    matchingQuickBtn.scrollIntoView({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest",
+    });
+  }
+
+  renderCalendarGrid();
+  renderHorarios(fecha);
+
+  if (!isInitial) {
+    setTimeout(() => {
+      const horariosEl = document.getElementById("horariosContainer");
+      if (!horariosEl) return;
+      const panel = document.querySelector(".panel-content");
+      if (panel) {
+        const offset = horariosEl.getBoundingClientRect().top
+          - panel.getBoundingClientRect().top
+          + panel.scrollTop - 20;
+        panel.scrollTo({ top: offset, behavior: "smooth" });
+      } else {
+        horariosEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 500);
+  }
+}
+
 function renderQuickDates() {
   if (!quickDatesContainer) return;
 
   quickDatesContainer.innerHTML = "";
-const todayStr = brusselsTodayISO();
 
-let validDates = [...fechasDisponibles];
+  const validDates = computeValidDates();
 
-// 🔥 comprobar si hoy aún tiene horarios futuros (Europe/Brussels)
-const todayHasFutureTimes = horarios.some((h: any) => {
-  if (h.fecha !== todayStr) return false;
-  return isSlotBookable(h.fecha, h.hora);
-});
+  // PUBLISHED != HAS_FUTURE_AVAILABILITY (B09 Gate 8, §9): si no hay
+  // ninguna fecha real, no quedan botones que auto-disparar el
+  // primer renderHorarios() — sin este mensaje explícito, el panel
+  // quedaba completamente en blanco (confirmado en datos reales de
+  // producción: tours publicados sin horarios futuros existen hoy).
+  if (validDates.length === 0) {
+    const noAvailabilityMsg =
+      currentLang === "en"
+        ? "No times available"
+        : currentLang === "it"
+        ? "Nessun orario disponibile"
+        : currentLang === "fr"
+        ? "Aucun horaire disponible"
+        : "No hay horarios disponibles";
 
-// si hoy no tiene horarios futuros → eliminarlo
-if (!todayHasFutureTimes) {
-  validDates = validDates.filter((f) => f !== todayStr);
-}
+    const emptyMsg = document.createElement("p");
+    emptyMsg.className = "text-sm text-gray-500";
+    emptyMsg.textContent = noAvailabilityMsg;
+    quickDatesContainer.appendChild(emptyMsg);
 
-// cualquier fecha estrictamente anterior a "hoy" en Brussels nunca es
-// válida como quick date, aunque llegara en fechasDisponibles por
-// alguna vía (defensa en profundidad además del filtro SSR)
-validDates = validDates.filter((f) => f >= todayStr);
+    if (contenedor) {
+      contenedor.innerHTML = `<p class="text-sm text-gray-400">${noAvailabilityMsg}</p>`;
+    }
+    toggleBtn?.classList.add("hidden");
+    return;
+  }
 
-const limitedDates = validDates.slice(0, 10);
+  toggleBtn?.classList.remove("hidden");
+
+  const limitedDates = validDates.slice(0, 10);
 
   limitedDates.forEach((fecha: string, index: number) => {
     const btn = document.createElement("button");
@@ -425,44 +587,11 @@ if (fecha === todayISO) {
     btn.className =
   "px-4 py-2 rounded-full border border-gray-300 text-sm bg-white hover:border-yellow-400 transition whitespace-nowrap flex-shrink-0";
 btn.style.scrollSnapAlign = "start";
+btn.dataset.date = fecha;
 
     btn.textContent = label;
 
-    btn.onclick = () => {
-  fechaPicker.value = fecha;
-
-  document
-    .querySelectorAll("#quickDates button")
-    .forEach((el) =>
-      el.classList.remove("border-yellow-400", "bg-yellow-100")
-    );
-
-  btn.classList.add("border-yellow-400", "bg-yellow-100");
-
-  btn.scrollIntoView({
-  behavior: "smooth",
-  inline: "center",
-  block: "nearest"
-});
-
-  renderHorarios(fecha);
-  // Scroll a horarios solo en click manual
-  if (!btn.dataset.initial) {
-    setTimeout(() => {
-      const horariosEl = document.getElementById("horariosContainer");
-      if (!horariosEl) return;
-      const panel = document.querySelector(".panel-content");
-      if (panel) {
-        const offset = horariosEl.getBoundingClientRect().top
-          - panel.getBoundingClientRect().top
-          + panel.scrollTop - 20;
-        panel.scrollTo({ top: offset, behavior: "smooth" });
-      } else {
-        horariosEl.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    }, 500);
-  }
-};
+    btn.onclick = () => selectDate(fecha, !!btn.dataset.initial);
 
     quickDatesContainer.appendChild(btn);
 
@@ -475,6 +604,148 @@ btn.style.scrollSnapAlign = "start";
 }
   });
 }
+
+// ==========================================================
+// CALENDARIO VISUAL COMPACTO (B09 Gate 8)
+// Único dato usado para distinguir AVAILABLE/UNAVAILABLE es
+// fechasDisponibles (real, calculado en SSR sobre el total de
+// horarios futuros — sin muestreo, sin llamadas adicionales). No se
+// añade ninguna dependencia: reutiliza Luxon, ya presente en este
+// mismo componente para la lógica de zona horaria F01.
+// ==========================================================
+const calendarPanel = document.getElementById("calendarPanel");
+const calendarGrid = document.getElementById("calendarGrid");
+const calendarMonthLabel = document.getElementById("calendarMonthLabel");
+const calendarPrevBtn = document.getElementById("calendarPrevMonth");
+const calendarNextBtn = document.getElementById("calendarNextMonth");
+
+const localeMap: Record<string, string> = {
+  es: "es-ES",
+  en: "en-GB",
+  it: "it-IT",
+  fr: "fr-FR",
+};
+const calendarLocale = localeMap[currentLang] || "es-ES";
+
+const firstAvailableDT = DateTime.fromISO(
+  fechasDisponibles[0] || brusselsTodayISO(),
+  { zone: BUSINESS_ZONE }
+);
+const lastAvailableDT = DateTime.fromISO(
+  fechasDisponibles[fechasDisponibles.length - 1] || brusselsTodayISO(),
+  { zone: BUSINESS_ZONE }
+);
+const minMonth = firstAvailableDT.startOf("month");
+const maxMonth = lastAvailableDT.startOf("month");
+
+let viewMonth = minMonth;
+
+function weekdayLabels(): string[] {
+  // Lunes conocido (2024-01-01) como ancla, sólo para nombrar días de
+  // la semana en el locale correcto — no depende del año real.
+  const anchorMonday = DateTime.fromObject(
+    { year: 2024, month: 1, day: 1 },
+    { zone: "utc" }
+  );
+  return Array.from({ length: 7 }, (_, i) =>
+    anchorMonday.plus({ days: i }).setLocale(calendarLocale).toFormat("ccc")
+  );
+}
+
+function renderCalendarGrid() {
+  if (!calendarGrid || !calendarMonthLabel) return;
+
+  calendarGrid.innerHTML = "";
+  calendarMonthLabel.textContent = viewMonth
+    .setLocale(calendarLocale)
+    .toFormat("LLLL yyyy");
+
+  if (calendarPrevBtn instanceof HTMLButtonElement) {
+    calendarPrevBtn.disabled = viewMonth <= minMonth;
+  }
+  if (calendarNextBtn instanceof HTMLButtonElement) {
+    calendarNextBtn.disabled = viewMonth >= maxMonth;
+  }
+
+  const validDates = new Set(computeValidDates());
+  const todayStr = brusselsTodayISO();
+
+  weekdayLabels().forEach((w) => {
+    const el = document.createElement("div");
+    el.className = "text-[11px] font-semibold text-gray-400 text-center py-1 uppercase";
+    el.setAttribute("aria-hidden", "true");
+    el.textContent = w;
+    calendarGrid.appendChild(el);
+  });
+
+  const daysInMonth = viewMonth.daysInMonth || 30;
+  // Luxon: weekday 1=lunes...7=domingo — semana empieza en lunes
+  const leadingBlanks = viewMonth.weekday - 1;
+
+  for (let i = 0; i < leadingBlanks; i++) {
+    calendarGrid.appendChild(document.createElement("div"));
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dt = viewMonth.set({ day });
+    const iso = dt.toISODate() as string;
+    const isPast = iso < todayStr;
+    const isAvailable = !isPast && validDates.has(iso);
+    const isToday = iso === todayStr;
+    const isSelected = iso === fechaPicker.value;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = String(day);
+    btn.setAttribute(
+      "aria-label",
+      dt.setLocale(calendarLocale).toFormat("cccc d LLLL")
+    );
+    if (isSelected) btn.setAttribute("aria-selected", "true");
+    if (isToday) btn.setAttribute("aria-current", "date");
+
+    const base =
+      "calendar-day relative h-9 w-full rounded-lg text-sm flex items-center justify-center transition";
+
+    if (isSelected) {
+      btn.className = `${base} bg-yellow-400 text-gray-900 font-bold`;
+    } else if (isAvailable) {
+      btn.className = `${base} bg-white text-gray-900 font-medium border border-gray-200 hover:border-yellow-400 hover:bg-yellow-50 cursor-pointer`;
+    } else {
+      btn.className = `${base} text-gray-300 cursor-not-allowed`;
+      btn.disabled = true;
+    }
+
+    if (isToday && !isSelected) {
+      btn.classList.add("ring-2", "ring-gray-400");
+    }
+
+    if (isAvailable && !isSelected) {
+      const dot = document.createElement("span");
+      dot.className = "absolute bottom-1 w-1.5 h-1.5 rounded-full bg-yellow-500";
+      dot.setAttribute("aria-hidden", "true");
+      btn.appendChild(dot);
+    }
+
+    if (isAvailable) {
+      btn.addEventListener("click", () => selectDate(iso, false));
+    }
+
+    calendarGrid.appendChild(btn);
+  }
+}
+
+calendarPrevBtn?.addEventListener("click", () => {
+  if (viewMonth <= minMonth) return;
+  viewMonth = viewMonth.minus({ months: 1 });
+  renderCalendarGrid();
+});
+
+calendarNextBtn?.addEventListener("click", () => {
+  if (viewMonth >= maxMonth) return;
+  viewMonth = viewMonth.plus({ months: 1 });
+  renderCalendarGrid();
+});
 
 renderQuickDates();
 
@@ -508,9 +779,25 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("focus", reconcileBrusselsTime);
 
-if (toggleBtn) {
+if (toggleBtn instanceof HTMLButtonElement) {
   toggleBtn.addEventListener("click", () => {
-    fechaPicker.classList.toggle("hidden");
+    const willOpen = calendarPanel?.classList.contains("hidden");
+    calendarPanel?.classList.toggle("hidden");
+    toggleBtn.setAttribute("aria-expanded", String(!!willOpen));
+    toggleBtn.textContent = willOpen
+      ? toggleBtn.dataset.labelClose ?? toggleBtn.textContent ?? ""
+      : toggleBtn.dataset.labelOpen ?? toggleBtn.textContent ?? "";
+
+    if (willOpen) {
+      let target = DateTime.fromISO(fechaPicker.value, {
+        zone: BUSINESS_ZONE,
+      }).startOf("month");
+      if (!target.isValid) target = minMonth;
+      if (target < minMonth) target = minMonth;
+      if (target > maxMonth) target = maxMonth;
+      viewMonth = target;
+      renderCalendarGrid();
+    }
   });
 }
 
@@ -790,19 +1077,6 @@ function getUrgencyText(spots: number): string | null {
   }
 }
 
-  
-  fechaPicker.addEventListener("change", (e) => {
-  const target = e.target;
-  if (!(target instanceof HTMLInputElement)) return;
-
-  window.bookingState = window.bookingState || {};
-  window.bookingState.selectedTime = null;
-  window.bookingState.horarioId = null;
-
-  renderHorarios(target.value);
-
-});
-
 });
 </script>
 
@@ -827,5 +1101,20 @@ function getUrgencyText(spots: number): string | null {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Insinúa que hay más fechas fuera de la vista (B09 Gate 8) */
+.quick-dates-fade {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 2rem;
+  background: linear-gradient(to right, transparent, #f9fafb);
+  pointer-events: none;
+}
+
+.calendar-day[disabled] {
+  background: transparent;
 }
 </style>

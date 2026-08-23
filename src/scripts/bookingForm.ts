@@ -173,10 +173,40 @@ document.addEventListener("participantsUpdated", () => {
 bookingRoot.querySelectorAll("input, select, textarea").forEach((input) => {
   input.addEventListener("input", () => {
     input.classList.remove("border-red-500", "ring-2", "ring-red-200");
+    input.removeAttribute("aria-invalid");
   });
 });
 
+// Banner de error de reserva (rechazo backend, red, sesión caducada) —
+// reemplaza alert() nativo, que bloquea la UI y no es accesible ni
+// deja el dato introducido a la vista (B09 Gate 9, §8/§9).
+const bookingErrorBanner = document.getElementById("bookingErrorBanner");
+const bookingErrorText = document.getElementById("bookingErrorText");
+const bookingErrorBackBtn = document.getElementById("bookingErrorBackBtn");
+
+function showBookingError(message: string, opts: { backToStep1?: boolean } = {}) {
+  if (!bookingErrorBanner || !bookingErrorText) {
+    // Red de seguridad si el markup no está presente por algún motivo
+    alert(message);
+    return;
+  }
+  bookingErrorText.textContent = message;
+  bookingErrorBanner.classList.remove("hidden");
+  bookingErrorBackBtn?.classList.toggle("hidden", !opts.backToStep1);
+  bookingErrorBanner.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function hideBookingError() {
+  bookingErrorBanner?.classList.add("hidden");
+}
+
+bookingErrorBackBtn?.addEventListener("click", () => {
+  hideBookingError();
+  showStep(1);
+});
+
     function showStep(stepNumber: number) {
+  hideBookingError();
   steps.forEach((s, i) => {
     if (!s) return;
     const idx = i + 1;
@@ -238,6 +268,7 @@ bookingRoot.querySelectorAll("input, select, textarea").forEach((input) => {
   if (!element) return;
 
   element.classList.add("border-red-500", "ring-2", "ring-red-200");
+  element.setAttribute("aria-invalid", "true");
 
   element.scrollIntoView({
     behavior: "smooth",
@@ -303,37 +334,6 @@ function validateStep1(showUI = false) {
   }
 
   return ok;
-}
-
- // 🔥 URGENCIA INTELIGENTE
-function updateUrgency() {
-  const state = window.bookingState || {};
-  const urgencyBox = document.getElementById("urgencyBox");
-  const urgencyText = document.getElementById("urgencyText");
-
-  if (!urgencyBox || !urgencyText) return;
-  if (!state.horarioId) {
-    urgencyBox.classList.add("hidden");
-    return;
-  }
-
-  // Aquí puedes conectar luego con cupos reales desde Strapi
-  const remainingSpots = Math.floor(Math.random() * 6); // demo 0–5
-
-  if (remainingSpots > 0 && remainingSpots <= 5) {
-    urgencyText.textContent =
-      lang === "es"
-        ? `⚠️ Últimas ${remainingSpots} plazas disponibles para este horario`
-        : lang === "en"
-        ? `⚠️ Only ${remainingSpots} spots left for this time`
-        : lang === "it"
-        ? `⚠️ Ultimi ${remainingSpots} posti disponibili`
-        : `⚠️ Dernières ${remainingSpots} places disponibles`;
-
-    urgencyBox.classList.remove("hidden");
-  } else {
-    urgencyBox.classList.add("hidden");
-  }
 }
 
 
@@ -443,7 +443,11 @@ function updateUrgency() {
         summaryTime.textContent = state.selectedTime;
       }
       if (summaryParticipants && state.participants) {
-        summaryParticipants.textContent = `${state.participants.adults} adultos, ${state.participants.children} niños`;
+        const adultsWord =
+          lang === "en" ? "adults" : lang === "it" ? "adulti" : lang === "fr" ? "adultes" : "adultos";
+        const childrenWord =
+          lang === "en" ? "children" : lang === "it" ? "bambini" : lang === "fr" ? "enfants" : "niños";
+        summaryParticipants.textContent = `${state.participants.adults} ${adultsWord}, ${state.participants.children} ${childrenWord}`;
       }
 
          const step2SummaryDate = document.getElementById("step2SummaryDate");
@@ -473,7 +477,6 @@ window.addEventListener("dateSelected", () => {
 window.addEventListener("timeSelected", () => {
   updateSummary();
   updateNavigation();
-  updateUrgency();
 });
 
     document.addEventListener("participantsUpdated", () => {
@@ -532,6 +535,7 @@ step2Inputs.forEach((input) => {
     });
 
     prevBtn?.addEventListener("click", () => {
+      if (isSubmitting) return;
       if (currentStep > 1) {
         showStep(currentStep - 1);
       }
@@ -584,11 +588,16 @@ step2Inputs.forEach((input) => {
       const state = window.bookingState || {};
       const horarioId = state.horarioId;
       if (!horarioId) {
-        alert(
-          "Ha ocurrido un problema con el horario seleccionado. Vuelve al paso 1 y elige de nuevo."
+        showBookingError(
+          lang === "es"
+            ? "Ha ocurrido un problema con el horario seleccionado. Elige fecha y hora de nuevo."
+            : lang === "en"
+            ? "There was a problem with the selected time slot. Please choose date and time again."
+            : lang === "it"
+            ? "Si è verificato un problema con l'orario selezionato. Scegli di nuovo data e ora."
+            : "Un problème est survenu avec le créneau sélectionné. Choisissez à nouveau la date et l'heure.",
+          { backToStep1: true }
         );
-
-        showStep(1);
         return;
       }
 
@@ -616,16 +625,30 @@ const marketingConsent = getInput("marketingConsent")?.checked || false;
         !email ||
         !emailConfirm
       ) {
-        alert(
-          "Faltan datos obligatorios. Vuelve al paso anterior."
-        );
         showStep(2);
+        showBookingError(
+          lang === "es"
+            ? "Faltan datos obligatorios. Revisa el paso anterior."
+            : lang === "en"
+            ? "Some required details are missing. Please check the previous step."
+            : lang === "it"
+            ? "Mancano dei dati obbligatori. Controlla il passaggio precedente."
+            : "Des informations obligatoires sont manquantes. Vérifiez l'étape précédente."
+        );
         return;
       }
 
       if (email !== emailConfirm) {
-        alert("Los correos no coinciden.");
         showStep(2);
+        showBookingError(
+          lang === "es"
+            ? "Los correos no coinciden."
+            : lang === "en"
+            ? "The email addresses don't match."
+            : lang === "it"
+            ? "Le email non corrispondono."
+            : "Les adresses email ne correspondent pas."
+        );
         return;
       }
 
@@ -672,15 +695,37 @@ const marketingConsent = getInput("marketingConsent")?.checked || false;
             .catch(() => ({}));
           console.error("❌ Error en /reservas/confirmar:", errJson);
 
+          // F01 (B09 Gate 9, §9): el horario pudo pasar mientras el
+          // usuario completaba el formulario — el backend es la
+          // autoridad final y lo rechaza con este código. No dejar al
+          // usuario atrapado: explicación humana + salida clara a
+          // volver a elegir, en vez del mensaje crudo del backend.
+          const isPastSlot = errJson?.code === "HORARIO_ALREADY_PAST";
+
+          if (isPastSlot) {
+            state.selectedDate = null;
+            state.selectedTime = null;
+            state.horarioId = null;
+          }
+
           const msg =
             errJson?.error?.message ||
             errJson?.message ||
             `Error ${resConfirm.status}`;
 
-          alert(
-            lang === "es"
+          showBookingError(
+            isPastSlot
+              ? lang === "es"
+                ? "Ese horario ya no está disponible. Elige otra fecha u hora."
+                : lang === "en"
+                ? "That time slot is no longer available. Please choose another date or time."
+                : lang === "it"
+                ? "Quell'orario non è più disponibile. Scegli un'altra data o ora."
+                : "Ce créneau n'est plus disponible. Choisissez une autre date ou heure."
+              : lang === "es"
               ? `No se pudo confirmar la reserva: ${msg}`
-              : `Could not confirm booking: ${msg}`
+              : `Could not confirm booking: ${msg}`,
+            { backToStep1: isPastSlot }
           );
 
           isSubmitting = false;
@@ -704,10 +749,14 @@ const marketingConsent = getInput("marketingConsent")?.checked || false;
             "❌ No se obtuvo confirmarToken en la respuesta:",
             dataConfirm
           );
-          alert(
+          showBookingError(
             lang === "es"
-              ? "Error interno: no se pudo generar el token de confirmación."
-              : "Internal error: could not generate confirmation token."
+              ? "No se pudo procesar la reserva. Inténtalo de nuevo en unos segundos."
+              : lang === "en"
+              ? "We couldn't process the booking. Please try again in a moment."
+              : lang === "it"
+              ? "Non è stato possibile elaborare la prenotazione. Riprova tra poco."
+              : "La réservation n'a pas pu être traitée. Merci de réessayer dans un instant."
           );
           isSubmitting = false;
           if (confirmBtn) {
@@ -728,15 +777,44 @@ const marketingConsent = getInput("marketingConsent")?.checked || false;
           const errJson = await resFinal.json().catch(() => ({}));
           console.error("❌ Error en /reservas/finalizar:", errJson);
 
+          // finalizar() vuelve a revalidar horario/tour en el backend
+          // (no confía en los snapshots de sesión) — el mismo rechazo
+          // F01 puede llegar aquí también, en la última pantalla.
+          const isPastSlot = errJson?.code === "HORARIO_ALREADY_PAST";
+
+          if (isPastSlot) {
+            state.selectedDate = null;
+            state.selectedTime = null;
+            state.horarioId = null;
+          }
+
           const msg =
             errJson?.error?.message ||
             errJson?.message ||
             `Error ${resFinal.status}`;
 
-          alert(
-            lang === "es"
+          showBookingError(
+            isPastSlot
+              ? lang === "es"
+                ? "Ese horario ya no está disponible. Elige otra fecha u hora."
+                : lang === "en"
+                ? "That time slot is no longer available. Please choose another date or time."
+                : lang === "it"
+                ? "Quell'orario non è più disponibile. Scegli un'altra data o ora."
+                : "Ce créneau n'est plus disponible. Choisissez une autre date ou heure."
+              : errJson?.message === "Sesión no válida o ya usada" ||
+                errJson?.message?.includes("expirad")
+              ? lang === "es"
+                ? "Tu sesión de reserva ha caducado. Vuelve a elegir fecha y hora."
+                : lang === "en"
+                ? "Your booking session has expired. Please choose date and time again."
+                : lang === "it"
+                ? "La tua sessione di prenotazione è scaduta. Scegli di nuovo data e ora."
+                : "Votre session de réservation a expiré. Choisissez à nouveau la date et l'heure."
+              : lang === "es"
               ? `No se pudo finalizar la reserva: ${msg}`
-              : `Could not complete booking: ${msg}`
+              : `Could not complete booking: ${msg}`,
+            { backToStep1: isPastSlot }
           );
 
           isSubmitting = false;
@@ -772,9 +850,18 @@ const marketingConsent = getInput("marketingConsent")?.checked || false;
         showSuccess();
         isSubmitting = false;
       } catch (e) {
+        // Fallo de red/conexión — mensaje humano, nunca el detalle
+        // técnico crudo (§8: "no mostrar errores técnicos/API crudos").
+        // El detalle real sigue disponible en consola para depuración.
         console.error("❌ Excepción en submitBooking:", e);
-        alert(
-          "❌ No se pudo completar la reserva. Revisa la API de Strapi (/reservas/confirmar y /reservas/finalizar) y los permisos de CORS/public."
+        showBookingError(
+          lang === "es"
+            ? "No se pudo conectar para completar la reserva. Comprueba tu conexión e inténtalo de nuevo."
+            : lang === "en"
+            ? "We couldn't connect to complete the booking. Check your connection and try again."
+            : lang === "it"
+            ? "Impossibile connettersi per completare la prenotazione. Controlla la connessione e riprova."
+            : "Impossible de se connecter pour finaliser la réservation. Vérifiez votre connexion et réessayez."
         );
         isSubmitting = false;
         if (confirmBtn) {

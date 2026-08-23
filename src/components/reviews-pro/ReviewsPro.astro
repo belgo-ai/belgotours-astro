@@ -11,7 +11,14 @@ interface Props {
   offset?: number;
 }
 
-const { tourSlug, lang, limit = 8, offset = 0 } = Astro.props;
+// B09 — Reviews UX: primeras 4 reseñas visibles de entrada (2x2 en
+// desktop, vertical en mobile). El resto del histórico real
+// (REVIEW_SYSTEM_HARD_SAFETY_CONTRACT — no se recorta, no se pierde,
+// sigue accesible completo vía "Ver todas las reseñas") se carga bajo
+// demanda desde el cliente contra el mismo endpoint ya corregido en
+// B09 F02/F03, respetando su propio límite de 20 por request.
+const MAX_INITIAL_REVIEWS = 4;
+const { tourSlug, lang, limit = MAX_INITIAL_REVIEWS, offset = 0 } = Astro.props;
 
 /* --------------------------------------------------
    🌍 Idiomas válidos para TOURS
@@ -173,9 +180,15 @@ const stars = summary?.stars || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 
           <!-- RIGHT: REVIEWS -->
           <div class="lg:col-span-7">
-            <div class="grid gap-4" id="reviews-list">
-              {reviews.map((r, idx) => (
-                <article class:list={["border border-gray-200 rounded-2xl p-5 shadow-sm", idx >= 3 ? "review-extra" : ""]}>
+            <div
+              class="reviews-grid grid gap-4 sm:grid-cols-2"
+              id="reviews-list"
+              data-verified-fallback={t.verified}
+              data-read-more={t.readMore}
+              data-read-less={t.readLess}
+            >
+              {reviews.map((r) => (
+                <article class="review-card border border-gray-200 rounded-2xl p-5 shadow-sm">
                   <div class="flex justify-between items-start gap-3">
                     <div class="min-w-0">
                       <div class="font-semibold text-gray-900">{r.nombre || t.verified}</div>
@@ -186,15 +199,29 @@ const stars = summary?.stars || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
                     </div>
                     <div class="text-yellow-400 flex-shrink-0">{"★".repeat(Math.min(5,Number(r.rating||0)))}</div>
                   </div>
-                  <p class="text-gray-700 mt-3 leading-relaxed text-sm md:text-base">{r.comentario}</p>
+                  <p class="review-text text-gray-700 mt-3 leading-relaxed text-sm md:text-base">{r.comentario}</p>
+                  <button type="button" class="review-toggle-btn hidden mt-1 text-xs font-semibold text-gray-900 underline">
+                    {t.readMore}
+                  </button>
                 </article>
               ))}
             </div>
-            {reviews.length > 3 && (
+
+            {pagination && pagination.total > reviews.length && (
               <div class="mt-6 text-center">
-                <button id="reviews-toggle-btn"
-                  class="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-gray-900 text-gray-900 font-semibold text-sm hover:bg-gray-900 hover:text-white transition-all duration-200">
-                  {safeLang === 'en' ? `See all reviews (${reviews.length})` : safeLang === 'it' ? `Vedi tutte le recensioni (${reviews.length})` : safeLang === 'fr' ? `Voir tous les avis (${reviews.length})` : `Ver todas las reseñas (${reviews.length})`}
+                <button
+                  id="reviews-see-all-btn"
+                  data-tour-slug={tourSlug}
+                  data-lang={safeLang}
+                  data-strapi-api={STRAPI_API}
+                  data-loaded={reviews.length}
+                  data-total={pagination.total}
+                  data-label-see-all={t.seeAll(pagination.total)}
+                  data-label-loading={t.loadingMore}
+                  data-label-done={t.showingAll(pagination.total)}
+                  class="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-gray-900 text-gray-900 font-semibold text-sm hover:bg-gray-900 hover:text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-900"
+                >
+                  {t.seeAll(pagination.total)}
                 </button>
               </div>
             )}
@@ -212,23 +239,167 @@ const stars = summary?.stars || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 </section>
 
 <style>
-.review-extra { display: none; }
-.review-extra.visible { display: block; }
+  .review-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .review-text.expanded {
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+    overflow: visible;
+  }
 </style>
 
 <script>
-const btn = document.getElementById('reviews-toggle-btn');
-if (btn) {
-  const extras = document.querySelectorAll('.review-extra');
-  let expanded = false;
-  const moreText = btn.textContent.trim();
-  const lessText = btn.closest('[data-lang]')?.dataset.lang === 'en' ? 'See less' :
-                   btn.closest('[data-lang]')?.dataset.lang === 'it' ? 'Vedi meno' :
-                   btn.closest('[data-lang]')?.dataset.lang === 'fr' ? 'Voir moins' : 'Ver menos';
-  btn.addEventListener('click', () => {
-    expanded = !expanded;
-    extras.forEach(el => el.classList.toggle('visible', expanded));
-    btn.textContent = expanded ? lessText : moreText;
-  });
-}
+  // "Leer más/Leer menos" por card — delegado en el contenedor para
+  // que funcione también en las cards añadidas dinámicamente por
+  // "Ver todas las reseñas".
+  function wireReadMore(scopeEl: HTMLElement) {
+    const readMoreLabel = scopeEl.dataset.readMore || "Leer más";
+    const readLessLabel = scopeEl.dataset.readLess || "Ver menos";
+
+    scopeEl.querySelectorAll<HTMLElement>(".review-card").forEach((card) => {
+      const textEl = card.querySelector<HTMLElement>(".review-text");
+      const btn = card.querySelector<HTMLButtonElement>(".review-toggle-btn");
+      if (!textEl || !btn || btn.dataset.wired) return;
+      btn.dataset.wired = "1";
+      btn.textContent = readMoreLabel;
+
+      // Sólo mostrar el botón si el texto realmente se recorta.
+      requestAnimationFrame(() => {
+        if (textEl.scrollHeight > textEl.clientHeight + 2) {
+          btn.classList.remove("hidden");
+        }
+      });
+
+      let expanded = false;
+      btn.addEventListener("click", () => {
+        expanded = !expanded;
+        textEl.classList.toggle("expanded", expanded);
+        btn.textContent = expanded ? readLessLabel : readMoreLabel;
+      });
+    });
+  }
+
+  const list = document.getElementById("reviews-list");
+  if (list) wireReadMore(list);
+
+  const seeAllBtn = document.getElementById(
+    "reviews-see-all-btn"
+  ) as HTMLButtonElement | null;
+
+  if (seeAllBtn && list) {
+    seeAllBtn.addEventListener("click", async () => {
+      const tourSlug = seeAllBtn.dataset.tourSlug || "";
+      const lang = seeAllBtn.dataset.lang || "es";
+      const apiBase = (seeAllBtn.dataset.strapiApi || "").replace(/\/$/, "");
+      const total = Number(seeAllBtn.dataset.total || 0);
+      let loaded = Number(seeAllBtn.dataset.loaded || 0);
+
+      seeAllBtn.disabled = true;
+      const originalLabel = seeAllBtn.textContent;
+      seeAllBtn.textContent = seeAllBtn.dataset.labelLoading || "…";
+
+      try {
+        while (loaded < total) {
+          const params = new URLSearchParams({
+            tour: tourSlug,
+            lang,
+            limit: "20",
+            offset: String(loaded),
+          });
+          const res = await fetch(`${apiBase}/public/reviews-pro?${params.toString()}`, {
+            headers: { Accept: "application/json" },
+          });
+          if (!res.ok) break;
+          const data = await res.json();
+          const batch = Array.isArray(data?.reviews) ? data.reviews : [];
+          if (!batch.length) break;
+
+          batch.forEach((r: any) => appendReviewCard(list, r, lang));
+          loaded += batch.length;
+
+          if (!data?.pagination?.hasMore) break;
+        }
+      } catch (e) {
+        console.error("❌ Error cargando el resto de reseñas", e);
+      }
+
+      wireReadMore(list);
+      seeAllBtn.dataset.loaded = String(loaded);
+
+      if (loaded >= total) {
+        seeAllBtn.textContent = seeAllBtn.dataset.labelDone || originalLabel;
+        seeAllBtn.disabled = true;
+      } else {
+        // Quedaron reseñas sin cargar (p.ej. error de red a mitad) —
+        // se deja reintentar en vez de fingir que ya están todas.
+        seeAllBtn.textContent = originalLabel;
+        seeAllBtn.disabled = false;
+      }
+    });
+  }
+
+  function localeFor(lang: string) {
+    return lang === "en" ? "en-US" : lang === "it" ? "it-IT" : lang === "fr" ? "fr-FR" : "es-ES";
+  }
+
+  // Construida con DOM APIs (textContent, nunca innerHTML con datos
+  // del cliente) — nombre/país/comentario son contenido real de
+  // usuarios y no deben interpretarse como HTML.
+  function appendReviewCard(container: HTMLElement, r: any, lang: string) {
+    const verifiedFallback = container.dataset.verifiedFallback || "Verified";
+
+    const article = document.createElement("article");
+    article.className = "review-card border border-gray-200 rounded-2xl p-5 shadow-sm";
+
+    const header = document.createElement("div");
+    header.className = "flex justify-between items-start gap-3";
+
+    const left = document.createElement("div");
+    left.className = "min-w-0";
+
+    const name = document.createElement("div");
+    name.className = "font-semibold text-gray-900";
+    name.textContent = r.nombre || verifiedFallback;
+    left.appendChild(name);
+
+    const meta = document.createElement("div");
+    meta.className = "text-sm text-gray-500 mt-0.5";
+    const parts: string[] = [];
+    if (r.pais) parts.push(String(r.pais));
+    if (r.fecha) {
+      try {
+        parts.push(new Date(r.fecha).toLocaleDateString(localeFor(lang)));
+      } catch {
+        // fecha inválida: se omite, no se fabrica una fecha falsa
+      }
+    }
+    meta.textContent = parts.join(" • ");
+    left.appendChild(meta);
+
+    header.appendChild(left);
+
+    const starsEl = document.createElement("div");
+    starsEl.className = "text-yellow-400 flex-shrink-0";
+    starsEl.textContent = "★".repeat(Math.min(5, Number(r.rating || 0)));
+    header.appendChild(starsEl);
+
+    article.appendChild(header);
+
+    const text = document.createElement("p");
+    text.className = "review-text text-gray-700 mt-3 leading-relaxed text-sm md:text-base";
+    text.textContent = r.comentario || "";
+    article.appendChild(text);
+
+    const toggleBtn = document.createElement("button");
+    toggleBtn.type = "button";
+    toggleBtn.className = "review-toggle-btn hidden mt-1 text-xs font-semibold text-gray-900 underline";
+    article.appendChild(toggleBtn);
+
+    container.appendChild(article);
+  }
 </script>

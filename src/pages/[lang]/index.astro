@@ -75,8 +75,16 @@ const heroTitle = seo.heroTitle;
 const heroSubtitle = seo.heroSubtitle;
 const heroDescription = seo.heroDescription;
 const heroHighlighted = seo.heroHighlighted;
+// B09 Gate 12 — heroImageUrl sólo alimenta la card HeroRight
+// (desktop, columna de apoyo junto al hero) — el fondo del hero móvil
+// está hardcodeado aparte dentro de HeroWrapper.astro y no se toca
+// aquí. Antes apuntaba a bruselas-hero.webp (calle lluviosa, sin
+// Grand Place ni paraguas de marca visibles) mientras el archivo
+// correcto para esta card ya existía sin usar en
+// /images/HeroRight/, con nombre explícito para este slot y foto real
+// con Grand Place + paraguas amarillo BelgoTours + grupo real.
 const heroImageUrl =
-   "/images/hero/bruselas-hero.webp";
+   "/images/HeroRight/free-walking-tour-brussels-historic-center.webp";
  
 const heroBadge = "⭐ 4.9 / 5";
 

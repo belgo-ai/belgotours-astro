@@ -2,10 +2,15 @@
 // src/components/booking/ParticipantCounter.astro
 interface Props {
   lang?: string;
-  showMaxHint?: boolean; // solo Free Tours
+  showMaxHint?: boolean;
 }
 
-const { lang = "es", showMaxHint = false } = Astro.props as Props;
+// La regla de máx. 7 personas aplica a cualquier tipo de reserva (el
+// componente no distingue), así que el hint debe verse siempre por
+// defecto — antes sólo se mostraba si el padre lo pedía explícitamente,
+// y BookingForm.astro nunca lo hacía, dejando el límite sin explicar
+// en tours no-Free (B09 Gate 8, §12).
+const { lang = "es", showMaxHint = true } = Astro.props as Props;
 ---
 
 <div id="participantCounter" class="participant-counter bg-gray-50 border border-gray-200 rounded-2xl p-5 space-y-5">
@@ -64,7 +69,7 @@ const { lang = "es", showMaxHint = false } = Astro.props as Props;
       <button
         type="button"
         id="increaseAdults"
-        class="w-9 h-9 rounded-full bg-yellow-400 text-gray-900 hover:bg-yellow-500 transition"
+        class="w-9 h-9 rounded-full bg-yellow-400 text-gray-900 hover:bg-yellow-500 transition disabled:opacity-40 disabled:hover:bg-yellow-400 disabled:cursor-not-allowed"
       >
         +
       </button>
@@ -100,7 +105,7 @@ const { lang = "es", showMaxHint = false } = Astro.props as Props;
       <button
         type="button"
         id="increaseChildren"
-        class="w-9 h-9 rounded-full bg-yellow-400 text-gray-900 hover:bg-yellow-500 transition"
+        class="w-9 h-9 rounded-full bg-yellow-400 text-gray-900 hover:bg-yellow-500 transition disabled:opacity-40 disabled:hover:bg-yellow-400 disabled:cursor-not-allowed"
       >
         +
       </button>

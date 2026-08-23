@@ -416,4 +416,18 @@ if (document.readyState === "loading") {
     bottom: 140px !important;
   }
 }
+
+/* Coordinación con CookieBanner (B09 Gate 7): cuando el banner está
+   visible, publica su huella real en --bt-cookie-offset y este botón
+   se desplaza esa misma cantidad para no quedar tapado — en vez de
+   offsets fijos por viewport que se desincronizan con el contenido
+   real del banner. */
+#aiFloatingButton {
+  bottom: calc(5rem + var(--bt-cookie-offset, 0px));
+}
+@media (min-width: 768px) {
+  #aiFloatingButton {
+    bottom: calc(7rem + var(--bt-cookie-offset, 0px));
+  }
+}
 </style>

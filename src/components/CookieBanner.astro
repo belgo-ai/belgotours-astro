@@ -66,9 +66,9 @@ const c = t[lang] || t.en;
 <style>
   .cookie-banner {
     position: fixed;
-    bottom: 1rem;
-    left: 1rem;
-    right: 1rem;
+    bottom: 0.625rem;
+    left: 0.625rem;
+    right: 0.625rem;
     z-index: 9999;
     max-width: 680px;
     margin: 0 auto;
@@ -76,27 +76,39 @@ const c = t[lang] || t.en;
     border: 1px solid #e5e7eb;
     border-radius: 14px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.10);
-    padding: 1rem 1.25rem;
+    padding: 0.75rem 0.875rem;
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
   }
   @media (min-width: 768px) {
     .cookie-banner {
       left: auto;
       right: 1.5rem;
       bottom: 1.5rem;
-      max-width: 480px;
+      max-width: 420px;
+      padding: 1rem 1.125rem;
+      padding-bottom: calc(1rem + env(safe-area-inset-bottom));
     }
   }
-  .cookie-inner { display: flex; flex-direction: column; gap: 0.75rem; }
-  .cookie-text { font-size: 0.82rem; color: #374151; line-height: 1.5; margin: 0; }
-  .cookie-link { color: #2563eb; text-decoration: underline; margin-left: 0.25rem; }
-  .cookie-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+  .cookie-inner { display: flex; flex-direction: column; gap: 0.5rem; }
+  .cookie-text { font-size: 0.78rem; color: #374151; line-height: 1.4; margin: 0; }
+  .cookie-link { color: #2563eb; text-decoration: underline; margin-left: 0.25rem; white-space: nowrap; }
+  .cookie-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+  .btn-cookie-primary,
+  .btn-cookie-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.25rem;
+    flex: 1 1 auto;
+    white-space: nowrap;
+  }
   .btn-cookie-primary {
     background: #facc15;
     color: #111827;
     border: none;
     border-radius: 8px;
-    padding: 0.45rem 1rem;
-    font-size: 0.82rem;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.8rem;
     font-weight: 700;
     cursor: pointer;
     transition: background 0.15s;
@@ -104,16 +116,27 @@ const c = t[lang] || t.en;
   .btn-cookie-primary:hover { background: #fbbf24; }
   .btn-cookie-secondary {
     background: transparent;
-    color: #6b7280;
-    border: 1px solid #e5e7eb;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
     border-radius: 8px;
-    padding: 0.45rem 0.875rem;
-    font-size: 0.82rem;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s;
   }
-  .btn-cookie-secondary:hover { color: #111827; border-color: #d1d5db; }
+  .btn-cookie-secondary:hover { color: #111827; border-color: #9ca3af; }
+  .btn-cookie-primary:focus-visible,
+  .btn-cookie-secondary:focus-visible,
+  .cookie-link:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+  @media (min-width: 400px) {
+    .cookie-actions { flex-wrap: nowrap; }
+    .btn-cookie-primary,
+    .btn-cookie-secondary { flex: 0 0 auto; }
+  }
 
   /* Panel */
   .cookie-panel {
@@ -142,7 +165,12 @@ const c = t[lang] || t.en;
   }
   .cookie-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
   .cookie-panel-title { font-size: 1rem; font-weight: 700; color: #111827; margin: 0; }
-  .cookie-panel-close { background: none; border: none; font-size: 1.1rem; color: #6b7280; cursor: pointer; padding: 0.25rem; }
+  .cookie-panel-close { background: none; border: none; font-size: 1.1rem; color: #6b7280; cursor: pointer; padding: 0.25rem; min-width: 2.25rem; min-height: 2.25rem; }
+  .cookie-panel-close:focus-visible,
+  .cookie-check:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
   .cookie-panel-body { display: flex; flex-direction: column; gap: 0.875rem; margin-bottom: 1.25rem; }
   .cookie-option { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.75rem; background: #f9fafb; border-radius: 10px; cursor: pointer; }
   .cookie-option-name { font-size: 0.875rem; font-weight: 600; color: #111827; }
@@ -172,18 +200,44 @@ const c = t[lang] || t.en;
     }
   }
 
+  // Coordinación con otros elementos fixed de la página (sticky CTA,
+  // AI assistant): en vez de offsets arbitrarios por viewport, el
+  // banner publica su propia huella vertical real como variable CSS
+  // — cualquier elemento fixed puede sumarla a su `bottom` para nunca
+  // quedar tapado mientras el banner está visible (B09 Gate 7).
+  function setCookieOffset(px) {
+    document.documentElement.style.setProperty("--bt-cookie-offset", px + "px");
+  }
+
+  function measureBannerOffset() {
+    if (!banner || getComputedStyle(banner).display === "none") {
+      setCookieOffset(0);
+      return;
+    }
+    const rect = banner.getBoundingClientRect();
+    setCookieOffset(Math.max(0, Math.round(window.innerHeight - rect.top + 8)));
+  }
+
   // Mostrar banner con pequeño delay para no bloquear LCP —
   // sólo en la primera visita, sin elección previa guardada.
   if (!readPrefs()) {
     setTimeout(() => {
       if (banner) banner.style.display = "block";
+      requestAnimationFrame(measureBannerOffset);
     }, 800);
   }
+
+  let resizeTimer;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(measureBannerOffset, 150);
+  });
 
   function save(prefs) {
     localStorage.setItem(COOKIE_KEY, JSON.stringify(prefs));
     if (banner) banner.style.display = "none";
     if (panel)  panel.style.display  = "none";
+    setCookieOffset(0);
     window.BTAnalytics?.updateConsent(prefs.analytics, prefs.marketing);
   }
 
@@ -197,6 +251,7 @@ const c = t[lang] || t.en;
 
   settingsBtn?.addEventListener("click", () => {
     if (banner) banner.style.display = "none";
+    setCookieOffset(0);
     openPanel();
   });
 

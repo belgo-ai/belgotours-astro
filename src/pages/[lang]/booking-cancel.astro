@@ -1,0 +1,326 @@
+---
+// B09 Gate 11 — página de cancelación autoservicio. Utilitaria,
+// nunca indexable (noindex, sin entrada en sitemap.xml.ts).
+export const prerender = false;
+
+import Layout from "../../layouts/Layout.astro";
+import { DateTime } from "luxon";
+
+const { lang: rawLang } = Astro.params;
+const lang = (["es", "en", "it", "fr"] as const).includes(rawLang as any)
+  ? (rawLang as "es" | "en" | "it" | "fr")
+  : "es";
+
+const token = Astro.url.searchParams.get("token");
+
+const STRAPI_URL =
+  import.meta.env.PUBLIC_STRAPI_URL || "http://localhost:1337/api";
+
+const T = {
+  es: {
+    title: "Cancelar reserva",
+    validTitle: "¿Cancelar tu reserva?",
+    validSubtitle: "Revisa los datos antes de confirmar. Esta acción no se puede deshacer.",
+    tour: "Tour",
+    date: "Fecha",
+    time: "Hora",
+    cancelBtn: "Cancelar reserva",
+    cancelling: "Cancelando…",
+    keepBtn: "No, mantener mi reserva",
+    successTitle: "Reserva cancelada",
+    successBody: "Tu reserva ha sido cancelada correctamente. Ya no tienes ninguna acción pendiente.",
+    alreadyTitle: "Esta reserva ya estaba cancelada",
+    alreadyBody: "No es necesario hacer nada más.",
+    invalidTitle: "Enlace no válido",
+    invalidBody: "Este enlace de cancelación no es válido o ha caducado.",
+    invalidBodyExpired: "Este enlace de cancelación ya no está disponible (el tour ya pasó o el plazo expiró).",
+    errorTitle: "No se pudo procesar",
+    errorBody: "Ha ocurrido un problema. Vuelve a intentarlo en unos segundos.",
+    retryBtn: "Reintentar",
+    backHome: "Volver a BelgoTours",
+    contactHint: "Si necesitas ayuda, contáctanos por WhatsApp.",
+  },
+  en: {
+    title: "Cancel booking",
+    validTitle: "Cancel your booking?",
+    validSubtitle: "Review the details before confirming. This action cannot be undone.",
+    tour: "Tour",
+    date: "Date",
+    time: "Time",
+    cancelBtn: "Cancel booking",
+    cancelling: "Cancelling…",
+    keepBtn: "No, keep my booking",
+    successTitle: "Booking cancelled",
+    successBody: "Your booking has been successfully cancelled. There is nothing else you need to do.",
+    alreadyTitle: "This booking was already cancelled",
+    alreadyBody: "No further action needed.",
+    invalidTitle: "Invalid link",
+    invalidBody: "This cancellation link is invalid or has expired.",
+    invalidBodyExpired: "This cancellation link is no longer available (the tour already happened or the link expired).",
+    errorTitle: "Something went wrong",
+    errorBody: "We had a problem processing this. Please try again in a moment.",
+    retryBtn: "Retry",
+    backHome: "Back to BelgoTours",
+    contactHint: "Need help? Contact us on WhatsApp.",
+  },
+  it: {
+    title: "Annulla prenotazione",
+    validTitle: "Annullare la prenotazione?",
+    validSubtitle: "Controlla i dettagli prima di confermare. Questa azione non può essere annullata.",
+    tour: "Tour",
+    date: "Data",
+    time: "Ora",
+    cancelBtn: "Annulla prenotazione",
+    cancelling: "Annullamento…",
+    keepBtn: "No, mantieni la prenotazione",
+    successTitle: "Prenotazione annullata",
+    successBody: "La tua prenotazione è stata annullata correttamente. Non devi fare altro.",
+    alreadyTitle: "Questa prenotazione era già stata annullata",
+    alreadyBody: "Non è necessario fare altro.",
+    invalidTitle: "Link non valido",
+    invalidBody: "Questo link di cancellazione non è valido o è scaduto.",
+    invalidBodyExpired: "Questo link di cancellazione non è più disponibile (il tour è già passato o il link è scaduto).",
+    errorTitle: "Si è verificato un problema",
+    errorBody: "Riprova tra qualche istante.",
+    retryBtn: "Riprova",
+    backHome: "Torna a BelgoTours",
+    contactHint: "Hai bisogno di aiuto? Contattaci su WhatsApp.",
+  },
+  fr: {
+    title: "Annuler la réservation",
+    validTitle: "Annuler votre réservation ?",
+    validSubtitle: "Vérifiez les détails avant de confirmer. Cette action est irréversible.",
+    tour: "Tour",
+    date: "Date",
+    time: "Heure",
+    cancelBtn: "Annuler la réservation",
+    cancelling: "Annulation…",
+    keepBtn: "Non, garder ma réservation",
+    successTitle: "Réservation annulée",
+    successBody: "Votre réservation a bien été annulée. Vous n'avez rien d'autre à faire.",
+    alreadyTitle: "Cette réservation était déjà annulée",
+    alreadyBody: "Aucune action supplémentaire n'est nécessaire.",
+    invalidTitle: "Lien invalide",
+    invalidBody: "Ce lien d'annulation est invalide ou a expiré.",
+    invalidBodyExpired: "Ce lien d'annulation n'est plus disponible (le tour a déjà eu lieu ou le lien a expiré).",
+    errorTitle: "Une erreur est survenue",
+    errorBody: "Veuillez réessayer dans un instant.",
+    retryBtn: "Réessayer",
+    backHome: "Retour à BelgoTours",
+    contactHint: "Besoin d'aide ? Contactez-nous sur WhatsApp.",
+  },
+} as const;
+
+const t = T[lang];
+
+type PageState = "valid" | "already_cancelled" | "invalid" | "error";
+
+let state: PageState = "invalid";
+let reason: string | null = null;
+let tourTitulo = "";
+let fechaFormateada = "";
+let horaFormateada = "";
+
+if (!token) {
+  state = "invalid";
+} else {
+  try {
+    const res = await fetch(
+      `${STRAPI_URL}/reservas/cancelacion/validar?token=${encodeURIComponent(token)}`,
+      { signal: AbortSignal.timeout(5000) },
+    );
+
+    // Un 5xx/backend caído es un problema transitorio (reintentable),
+    // muy distinto de un token genuinamente inválido — no deben
+    // mostrar el mismo mensaje ("enlace no válido" sugiere que
+    // reintentar no serviría de nada).
+    if (!res.ok) {
+      state = "error";
+    } else {
+      const json = await res.json().catch(() => ({}));
+
+      if (json?.valid && json?.status === "cancelada") {
+        state = "already_cancelled";
+      } else if (json?.valid && json?.status === "confirmada") {
+        state = "valid";
+      } else {
+        state = "invalid";
+        reason = json?.reason || null;
+      }
+
+      if (json?.tour) {
+        tourTitulo = json.tour.titulo || "";
+      }
+
+      if (json?.fecha_hora_tour) {
+        const dt = DateTime.fromISO(json.fecha_hora_tour, {
+          zone: "Europe/Brussels",
+        }).setLocale(lang);
+        fechaFormateada = dt.toLocaleString(DateTime.DATE_FULL);
+        horaFormateada = dt.toFormat("HH:mm");
+      }
+    }
+  } catch {
+    state = "error";
+  }
+}
+---
+
+<Layout lang={lang} title={t.title} noindex={true}>
+  <main class="min-h-screen bg-gray-50 py-10 px-4">
+    <div class="max-w-lg mx-auto">
+      <div class="bg-white shadow-xl rounded-3xl p-6 sm:p-8 border border-gray-100">
+
+        {state === "valid" && (
+          <div id="cc-valid-view">
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">{t.validTitle}</h1>
+            <p class="text-gray-600 text-sm mb-6">{t.validSubtitle}</p>
+
+            <div class="bg-gray-50 rounded-2xl border border-gray-200 p-4 mb-6 space-y-2 text-sm">
+              {tourTitulo && (
+                <div class="flex justify-between gap-3">
+                  <span class="font-medium text-gray-500">{t.tour}</span>
+                  <span class="font-semibold text-gray-900 text-right">{tourTitulo}</span>
+                </div>
+              )}
+              {fechaFormateada && (
+                <div class="flex justify-between gap-3">
+                  <span class="font-medium text-gray-500">{t.date}</span>
+                  <span class="font-semibold text-gray-900">{fechaFormateada}</span>
+                </div>
+              )}
+              {horaFormateada && (
+                <div class="flex justify-between gap-3">
+                  <span class="font-medium text-gray-500">{t.time}</span>
+                  <span class="font-semibold text-gray-900">{horaFormateada}</span>
+                </div>
+              )}
+            </div>
+
+            <div class="space-y-3">
+              <button
+                type="button"
+                id="cc-cancel-btn"
+                data-token={token}
+                data-label-default={t.cancelBtn}
+                data-label-loading={t.cancelling}
+                class="w-full px-6 py-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {t.cancelBtn}
+              </button>
+              <a
+                href={`/${lang}/`}
+                class="block text-center px-6 py-3 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition"
+              >
+                {t.keepBtn}
+              </a>
+            </div>
+
+            <div id="cc-error-inline" class="hidden mt-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+              {t.errorBody}
+            </div>
+          </div>
+        )}
+
+        <div id="cc-success-view" class="hidden text-center py-6">
+          <h1 class="text-2xl font-bold text-green-600 mb-2">{t.successTitle}</h1>
+          <p class="text-gray-700 text-sm mb-6">{t.successBody}</p>
+          <a href={`/${lang}/`} class="inline-block px-6 py-3 rounded-xl bg-gray-800 text-white font-semibold hover:bg-gray-900">
+            {t.backHome}
+          </a>
+        </div>
+
+        {state === "already_cancelled" && (
+          <div class="text-center py-6">
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">{t.alreadyTitle}</h1>
+            <p class="text-gray-600 text-sm mb-2">{t.alreadyBody}</p>
+            {tourTitulo && (
+              <p class="text-gray-500 text-sm mb-6">
+                {tourTitulo}{fechaFormateada ? ` — ${fechaFormateada}` : ""}
+              </p>
+            )}
+            <a href={`/${lang}/`} class="inline-block px-6 py-3 rounded-xl bg-gray-800 text-white font-semibold hover:bg-gray-900">
+              {t.backHome}
+            </a>
+          </div>
+        )}
+
+        {state === "invalid" && (
+          <div class="text-center py-6">
+            <h1 class="text-2xl font-bold text-red-600 mb-2">{t.invalidTitle}</h1>
+            <p class="text-gray-600 text-sm mb-6">
+              {reason === "expired" ? t.invalidBodyExpired : t.invalidBody}
+            </p>
+            <a href={`/${lang}/`} class="inline-block px-6 py-3 rounded-xl bg-gray-800 text-white font-semibold hover:bg-gray-900">
+              {t.backHome}
+            </a>
+            <p class="text-xs text-gray-400 mt-4">{t.contactHint}</p>
+          </div>
+        )}
+
+        {state === "error" && (
+          <div class="text-center py-6">
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">{t.errorTitle}</h1>
+            <p class="text-gray-600 text-sm mb-6">{t.errorBody}</p>
+            <a href={Astro.url.pathname + Astro.url.search} class="inline-block px-6 py-3 rounded-xl bg-gray-800 text-white font-semibold hover:bg-gray-900">
+              {t.retryBtn}
+            </a>
+          </div>
+        )}
+
+      </div>
+    </div>
+  </main>
+
+  <script
+    is:inline
+    define:vars={{
+      CC_API: STRAPI_URL,
+    }}
+  >
+    (function () {
+      const btn = document.getElementById("cc-cancel-btn");
+      if (!btn) return; // sólo existe en el estado "valid"
+
+      const validView = document.getElementById("cc-valid-view");
+      const successView = document.getElementById("cc-success-view");
+      const errorInline = document.getElementById("cc-error-inline");
+
+      btn.addEventListener("click", async () => {
+        if (btn.disabled) return; // guard contra doble clic
+
+        errorInline?.classList.add("hidden");
+        btn.disabled = true;
+        btn.textContent = btn.dataset.labelLoading || "…";
+
+        try {
+          const res = await fetch(`${CC_API}/reservas/cancelacion/confirmar`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: btn.dataset.token }),
+          });
+
+          const json = await res.json().catch(() => ({}));
+
+          if (res.ok && json?.success) {
+            validView?.classList.add("hidden");
+            successView?.classList.remove("hidden");
+            return;
+          }
+
+          // Fallo controlado del backend (token inválido/expirado/no
+          // cancelable) — no debería ocurrir normalmente si ya se
+          // validó en SSR, pero puede pasar si el estado cambió justo
+          // entre la carga de la página y el clic.
+          errorInline?.classList.remove("hidden");
+          btn.disabled = false;
+          btn.textContent = btn.dataset.labelDefault || "Cancelar";
+        } catch (e) {
+          errorInline?.classList.remove("hidden");
+          btn.disabled = false;
+          btn.textContent = btn.dataset.labelDefault || "Cancelar";
+        }
+      });
+    })();
+  </script>
+</Layout>

@@ -141,6 +141,28 @@ function mediaUrl(
   return path ? `${apiBase}${path}` : "";
 }
 
+// B09 Gate 12 — Strapi ya genera 4 tamaños reales por imagen
+// (thumbnail/small/medium/large) pero el frontend sólo usaba uno fijo
+// para todos los viewports. srcset real a partir de datos que ya
+// llegan en la misma respuesta — sin generar ni pedir nada nuevo.
+function mediaSrcSet(media: any): string {
+  if (!media?.formats) return "";
+
+  const apiBase =
+    (import.meta.env.PUBLIC_STRAPI_URL || "")
+      .replace(/\/api\/?$/, "")
+      .replace(/\/$/, "");
+
+  const abs = (u: string) =>
+    u.startsWith("http://") || u.startsWith("https://") ? u : `${apiBase}${u}`;
+
+  return (["thumbnail", "small", "medium", "large"] as const)
+    .map((key) => media.formats[key])
+    .filter((f: any) => f?.url && f?.width)
+    .map((f: any) => `${abs(f.url)} ${f.width}w`)
+    .join(", ");
+}
+
 /* =========================================================
 NORMALIZATION
 ========================================================= */
@@ -215,6 +237,9 @@ lng: attrs.coordenadas_lng ?? null,
 // hero
 heroMedia: {
 imagen: mediaUrl(heroMedia?.imagen, "large"),
+imagenSrcSet: mediaSrcSet(heroMedia?.imagen),
+imagenWidth: heroMedia?.imagen?.formats?.large?.width || heroMedia?.imagen?.width || null,
+imagenHeight: heroMedia?.imagen?.formats?.large?.height || heroMedia?.imagen?.height || null,
 video: heroMedia?.video || "",
 },
 
@@ -233,6 +258,9 @@ duracion: p.duracion || "",
 descripcion: p.descripcion || "",
 icono: p.icono || "",
 imagen: mediaUrl(p.imagen, "medium"),
+imagenSrcSet: mediaSrcSet(p.imagen),
+imagenWidth: p.imagen?.formats?.medium?.width || p.imagen?.width || null,
+imagenHeight: p.imagen?.formats?.medium?.height || p.imagen?.height || null,
 })),
 
 // 👇 preparado para guías (NO se usa aún)
@@ -331,6 +359,38 @@ pagoAlGuia: "Pago al guía",
 presupuesto: "Presupuesto",
 microPrivate: "Te contactamos por WhatsApp para definir fecha y precio",
 };
+
+/* =========================================================
+PROGRESSIVE DISCLOSURE I18N (descripción + itinerario)
+— B09 Gate 7, mismo patrón/wording ya validado en Reviews UX
+========================================================= */
+const disclosureTexts: Record<Lang, { readMore: string; readLess: string; itinerarySeeAll: (n: number) => string; itinerarySeeLess: string }> = {
+  es: {
+    readMore: "Leer más",
+    readLess: "Ver menos",
+    itinerarySeeAll: (n) => `Ver itinerario completo (${n} paradas)`,
+    itinerarySeeLess: "Ver menos paradas",
+  },
+  en: {
+    readMore: "Read more",
+    readLess: "Show less",
+    itinerarySeeAll: (n) => `See full itinerary (${n} stops)`,
+    itinerarySeeLess: "Show fewer stops",
+  },
+  it: {
+    readMore: "Leggi di più",
+    readLess: "Mostra meno",
+    itinerarySeeAll: (n) => `Vedi itinerario completo (${n} tappe)`,
+    itinerarySeeLess: "Mostra meno tappe",
+  },
+  fr: {
+    readMore: "Lire plus",
+    readLess: "Voir moins",
+    itinerarySeeAll: (n) => `Voir l'itinéraire complet (${n} étapes)`,
+    itinerarySeeLess: "Voir moins d'étapes",
+  },
+};
+const dt = disclosureTexts[lang] || disclosureTexts.es;
 
 /* =========================================================
 HERO COPY + FORMATTING
@@ -662,9 +722,14 @@ playsinline
 ) : tour.heroMedia?.imagen ? (
 <img
 src={tour.heroMedia.imagen}
+srcset={tour.heroMedia.imagenSrcSet || undefined}
+sizes="100vw"
+width={tour.heroMedia.imagenWidth || undefined}
+height={tour.heroMedia.imagenHeight || undefined}
 alt={tour.titulo}
 class="w-full h-full object-cover"
 loading="eager"
+fetchpriority="high"
 decoding="async"
 />
 ) : (
@@ -718,6 +783,9 @@ decoding="async"
 
 {langLabel && <span>🌍 {langLabel}</span>}
 {cityLabel && <span>🏙️ {cityLabel}</span>}
+{reviewCount > 0 && (
+<span>⭐ {rating.toFixed(1)} ({reviewCount})</span>
+)}
 </div>
 
 <!-- CTA Card -->
@@ -809,7 +877,8 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
         class="bg-gray-50 rounded-2xl p-6 md:p-10 shadow-md"
       >
         <div
-          class="prose prose-lg md:prose-xl max-w-none text-gray-700
+          id="description-content"
+          class="description-clamp prose prose-lg md:prose-xl max-w-none text-gray-700
                  prose-p:leading-relaxed
                  prose-p:my-5
                  prose-strong:text-gray-900
@@ -823,11 +892,53 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
             <p>{heroSubtitle}</p>
           )}
         </div>
+        <button
+          type="button"
+          id="description-toggle-btn"
+          aria-expanded="false"
+          aria-controls="description-content"
+          class="hidden mt-4 text-sm font-bold text-yellow-600 hover:text-yellow-700 underline underline-offset-2"
+          data-label-more={dt.readMore}
+          data-label-less={dt.readLess}
+        >
+          {dt.readMore}
+        </button>
       </div>
     </div>
 
   </div>
 </section>
+
+<script>
+(function () {
+  const content = document.getElementById("description-content");
+  const btn = document.getElementById("description-toggle-btn");
+  if (!content || !btn) return;
+
+  function checkOverflow() {
+    if (content!.classList.contains("expanded")) return;
+    const overflowing = content!.scrollHeight > content!.clientHeight + 4;
+    if (overflowing) {
+      btn!.classList.remove("hidden");
+    } else {
+      content!.classList.remove("description-clamp");
+      btn!.classList.add("hidden");
+    }
+  }
+
+  btn.addEventListener("click", () => {
+    const isOpen = btn!.getAttribute("aria-expanded") === "true";
+    content!.classList.toggle("expanded", !isOpen);
+    btn!.setAttribute("aria-expanded", String(!isOpen));
+    btn!.textContent = (isOpen ? btn!.dataset.labelMore : btn!.dataset.labelLess) ?? "";
+  });
+
+  requestAnimationFrame(checkOverflow);
+  window.addEventListener("resize", () => {
+    if (btn!.getAttribute("aria-expanded") !== "true") checkOverflow();
+  });
+})();
+</script>
 
 <!-- Separador suave hacia Itinerario -->
 
@@ -847,9 +958,9 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
     </div>
 
     <!-- Lista de paradas -->
-    <div class="max-w-4xl mx-auto space-y-8 md:space-y-12">
+    <div class="max-w-4xl mx-auto space-y-8 md:space-y-12" id="itinerary-list">
       {tour.itinerario?.map((punto: any, index: number) => (
-        <article class="bg-white rounded-3xl shadow-card overflow-hidden">
+        <article class:list={["bg-white rounded-3xl shadow-card overflow-hidden", index >= 4 && "itinerary-extra hidden"]}>
           <div class="grid grid-cols-1 md:grid-cols-2">
 
             <!-- Imagen -->
@@ -857,6 +968,10 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
               {punto.imagen ? (
                 <img
                   src={punto.imagen}
+                  srcset={punto.imagenSrcSet || undefined}
+                  sizes="(min-width: 768px) 50vw, 100vw"
+                  width={punto.imagenWidth || undefined}
+                  height={punto.imagenHeight || undefined}
                   alt={punto.titulo}
                   class="w-full h-64 md:h-full object-cover"
                   loading="lazy"
@@ -894,9 +1009,42 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
       ))}
     </div>
 
+    {tour.itinerario && tour.itinerario.length > 4 && (
+      <div class="max-w-4xl mx-auto mt-8 text-center">
+        <button
+          type="button"
+          id="itinerary-toggle-btn"
+          aria-expanded="false"
+          aria-controls="itinerary-list"
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-semibold hover:border-yellow-400 hover:bg-yellow-50 transition-colors"
+          data-label-more={dt.itinerarySeeAll(tour.itinerario.length)}
+          data-label-less={dt.itinerarySeeLess}
+        >
+          {dt.itinerarySeeAll(tour.itinerario.length)}
+        </button>
+      </div>
+    )}
+
   </div>
 </section>
 
+<script>
+(function () {
+  const btn = document.getElementById("itinerary-toggle-btn");
+  if (!btn) return;
+  const extras = document.querySelectorAll(".itinerary-extra");
+
+  btn.addEventListener("click", () => {
+    const wasOpen = btn.getAttribute("aria-expanded") === "true";
+    extras.forEach((el) => el.classList.toggle("hidden", wasOpen));
+    btn.setAttribute("aria-expanded", String(!wasOpen));
+    btn.textContent = (wasOpen ? btn.dataset.labelMore : btn.dataset.labelLess) ?? "";
+    if (wasOpen) {
+      document.getElementById("itinerary-list")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  });
+})();
+</script>
 
 <!-- 5) MAPA / PUNTO DE ENCUENTRO -->
 <section id="mapa" class="py-14 md:py-20 bg-gradient-to-b from-gray-900 to-gray-800 text-white">
@@ -1228,6 +1376,36 @@ body.no-scroll {
 }
 #bookingWidget {
   will-change: transform;
+  bottom: calc(0.75rem + var(--bt-cookie-offset, 0px));
+}
+@media (min-width: 768px) {
+  #bookingWidget {
+    bottom: calc(2rem + var(--bt-cookie-offset, 0px));
+  }
+}
+
+/* ======================================================
+   DESCRIPCIÓN — resumen visible + expansión (B09 Gate 7)
+====================================================== */
+.description-clamp {
+  max-height: 14rem;
+  overflow: hidden;
+  position: relative;
+  transition: max-height 300ms ease;
+}
+.description-clamp::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 3rem;
+  background: linear-gradient(to bottom, rgba(249,250,251,0), #f9fafb);
+  pointer-events: none;
+}
+.description-clamp.expanded {
+  max-height: none;
+}
+.description-clamp.expanded::after {
+  display: none;
 }
 </style>
   

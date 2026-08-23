@@ -74,16 +74,34 @@ try {
       <div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
         {guias.map((g) => {
           const a = g.attributes || {};
-          const foto = a.foto?.data?.attributes?.url;
+          // B09 Gate 12 — antes usaba directamente la foto ORIGINAL sin
+          // redimensionar (formats?.small/thumbnail ya existen en
+          // Strapi y GuidesSectionTour.astro ya los usa correctamente
+          // para este mismo dato) — un avatar de 128px no necesita el
+          // archivo maestro completo.
+          const fotoAttrs = a.foto?.data?.attributes;
+          const foto =
+            fotoAttrs?.formats?.small?.url ||
+            fotoAttrs?.formats?.thumbnail?.url ||
+            fotoAttrs?.formats?.medium?.url ||
+            fotoAttrs?.url;
 
           return (
             <article class="flex flex-col items-center text-center">
-              {foto && (
+              {foto ? (
                 <img
                   src={foto}
-                  alt={a.nombre}
+                  alt={`${a.nombre} - ${t.role}`}
+                  width="128"
+                  height="128"
+                  loading="lazy"
+                  decoding="async"
                   class="w-32 h-32 rounded-full object-cover mb-4 border-2 border-[#FACC15]"
                 />
+              ) : (
+                <div class="w-32 h-32 rounded-full mb-4 border-2 border-[#FACC15] bg-neutral-800 flex items-center justify-center text-neutral-500 text-3xl">
+                  👤
+                </div>
               )}
 
               <h3 class="text-white font-semibold text-lg">

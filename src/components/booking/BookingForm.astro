@@ -161,6 +161,27 @@ const STRAPI_API_BASE =
 
   <BookingSteps currentStep={1} lang={lang} />
 
+  <!-- Errores de reserva (rechazo backend, red, sesión caducada) —
+       reemplaza alert() nativo (B09 Gate 9, §8/§9) -->
+  <div
+    id="bookingErrorBanner"
+    class="hidden mx-5 md:mx-7 mt-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800"
+    role="alert"
+  >
+    <p id="bookingErrorText"></p>
+    <button
+      type="button"
+      id="bookingErrorBackBtn"
+      class="hidden mt-2 font-semibold text-red-900 underline underline-offset-2"
+    >
+      {lang === "es" && "← Elegir otra fecha y hora"}
+      {lang === "en" && "← Choose another date and time"}
+      {lang === "it" && "← Scegli un'altra data e ora"}
+      {lang === "fr" && "← Choisir une autre date et heure"}
+      {!["es", "en", "it", "fr"].includes(lang) && "← Choose another date and time"}
+    </button>
+  </div>
+
   <div class="p-5 md:p-7 space-y-8 pb-28">
     <!-- PASO 1: FECHA / HORARIO / PARTICIPANTES -->
     <div id="step1" class="booking-step active space-y-6">
@@ -170,11 +191,6 @@ const STRAPI_API_BASE =
   {lang === "it" && "Seleziona data e orario"}
   {lang === "fr" && "Choisissez date et horaire"}
 </h3>
-         <!-- 🔥 Urgencia inteligente -->
-         <div id="urgencyBox" class="hidden rounded-xl border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
-         <span id="urgencyText"></span>
-         </div>
-
     <p class="text-xs text-gray-500">
   {isFreeTour && (
     lang === "es"
@@ -280,6 +296,7 @@ const STRAPI_API_BASE =
         name="firstName"
         type="text"
         required
+        autocomplete="given-name"
         class="w-full p-2.5 border border-gray-300 rounded-xl focus:border-gray-900 focus:ring-2 focus:ring-yellow-300 focus:outline-none transition placeholder-gray-400"
         placeholder={lang === "es" ? "Ej: María" : "John"}
       />
@@ -298,6 +315,7 @@ const STRAPI_API_BASE =
         name="lastName"
         type="text"
         required
+        autocomplete="family-name"
         class="w-full p-2.5 border border-gray-300 rounded-xl focus:border-gray-900 focus:ring-2 focus:ring-yellow-300 focus:outline-none transition placeholder-gray-400"
         placeholder={lang === "es" ? "Ej: González López" : "Doe"}
       />
@@ -312,6 +330,11 @@ const STRAPI_API_BASE =
       {lang === "it" && "Paese"}
       {lang === "fr" && "Pays"} *
     </label>
+    <!-- autocomplete="off" es deliberado, no un olvido: este campo ya
+         tiene su propio autocompletado real (geocoding vía
+         #countrySuggestions) — dejar el autocomplete nativo activo
+         haría competir dos listas de sugerencias superpuestas
+         (B09 Gate 9, §5/§6). -->
     <div class="relative">
       <input
         id="customerCountry"
@@ -336,6 +359,7 @@ const STRAPI_API_BASE =
       {lang === "it" && "Città"}
       {lang === "fr" && "Ville"} *
     </label>
+    <!-- autocomplete="off" deliberado — mismo motivo que customerCountry -->
     <div class="relative">
       <input
         id="customerCity"
@@ -370,6 +394,7 @@ const STRAPI_API_BASE =
       required
       inputmode="tel"
       autocomplete="tel"
+      aria-describedby="phoneError"
       class="w-full p-3 border border-gray-300 rounded-xl focus:border-gray-900 focus:ring-2 focus:ring-yellow-300 focus:outline-none transition"
       placeholder="+34 612 345 678"
     />
@@ -400,6 +425,8 @@ const STRAPI_API_BASE =
         name="customerEmail"
         type="email"
         required
+        autocomplete="email"
+        inputmode="email"
         class="w-full p-2.5 border border-gray-300 rounded-xl focus:border-gray-900 focus:ring-2 focus:ring-yellow-300 focus:outline-none transition placeholder-gray-400"
         placeholder="email@ejemplo.com"
       />
@@ -418,6 +445,9 @@ const STRAPI_API_BASE =
         name="customerEmailConfirm"
         type="email"
         required
+        autocomplete="off"
+        inputmode="email"
+        aria-describedby="emailMismatch"
         class="w-full p-2.5 border border-gray-300 rounded-xl focus:border-gray-900 focus:ring-2 focus:ring-yellow-300 focus:outline-none transition placeholder-gray-400"
         placeholder={lang === "es" ? "Repite tu correo" : "Repeat your email"}
       />

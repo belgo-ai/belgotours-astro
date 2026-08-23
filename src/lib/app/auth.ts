@@ -62,6 +62,24 @@ const ROLE_MAP: Record<string, AppUser['role']> = {
   'Guide':            'guide',
 };
 
+// Producción, 2026-08-23 — hotfix: el endpoint estándar de Strapi
+// POST /api/auth/local (users-permissions, sin overrides en este
+// proyecto) NUNCA popula la relación `role` en su respuesta — es su
+// comportamiento de fábrica, confirmado leyendo el propio código
+// fuente del plugin instalado. `data.user.role` siempre era
+// `undefined`, así que el fail-closed introducido en d192bc7 rechazaba
+// la sesión de CUALQUIER usuario con CUALQUIER contraseña correcta —
+// no era un problema de credenciales. Fix: pedir el rol por separado,
+// ya autenticado, al único endpoint que sí lo popula bajo demanda.
+async function fetchAuthenticatedRole(jwt: string): Promise<string | undefined> {
+  const res = await fetch(`${STRAPI_URL}/api/users/me?populate=role`, {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  if (!res.ok) return undefined;
+  const me = await res.json();
+  return me?.role?.name;
+}
+
 export async function loginWithStrapi(
   identifier: string,
   password: string
@@ -76,13 +94,15 @@ export async function loginWithStrapi(
     const data = await res.json();
     if (!data.jwt || !data.user) return null;
 
-    const strapiRoleName = data.user.role?.name;
+    // No confiar en data.user.role (auth/local nunca lo popula) —
+    // el rol real se obtiene con una segunda llamada ya autenticada.
+    const strapiRoleName = await fetchAuthenticatedRole(data.jwt);
     const mappedRole = strapiRoleName ? ROLE_MAP[strapiRoleName] : undefined;
 
-    // Fail-closed: si el rol de Strapi no mapea explícitamente a un rol
-    // de aplicación conocido (p.ej. el rol genérico "Authenticated"),
-    // se deniega la sesión por completo. Nunca se asigna un rol
-    // privilegiado por defecto.
+    // Fail-closed: si /users/me falla, no devuelve rol, o el rol no
+    // mapea explícitamente a un rol de aplicación conocido (p.ej. el
+    // rol genérico "Authenticated"), se deniega la sesión por
+    // completo. Nunca se asigna un rol privilegiado por defecto.
     if (!mappedRole) {
       console.warn('[auth] login denied: unmapped Strapi role', strapiRoleName);
       return null;
