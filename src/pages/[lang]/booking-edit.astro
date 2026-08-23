@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import Layout from "../../layouts/Layout.astro";
+import Icon from "@/components/icons/Icon.astro";
 
 import { DateTime } from "luxon";
 
@@ -251,7 +252,7 @@ const tTips = {
           {/* CABECERA */}
           <header class="mb-6">
             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium border border-blue-100 mb-3">
-              <span>🔐</span>
+              <Icon name="lock" size={14} />
               <span>
                 {uiLang === "es" &&
                   "Solo tú puedes ver y modificar estos datos"}
@@ -276,8 +277,8 @@ const tTips = {
             <aside class="lg:col-span-2 space-y-4">
               <section class="bg-white rounded-2xl shadow-xl border border-gray-100 p-5">
                 <h2 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <span class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 text-lg">
-                    📌
+                  <span class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                    <Icon name="bookmark" size={16} />
                   </span>
                   <span>{tSectionBooking[uiLang]}</span>
                 </h2>
@@ -353,7 +354,7 @@ const tTips = {
                 </div>
 
                 <p class="mt-4 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3 flex gap-2">
-                  <span>⚠️</span>
+                  <Icon name="alert-triangle" size={14} class="mt-0.5" />
                   <span>{tWarningDate[uiLang]}</span>
                 </p>
               </section>
@@ -406,8 +407,8 @@ const tTips = {
 
                 <div class="relative z-10">
                   <h2 class="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
-                    <span class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 text-lg">
-                      ✏️
+                    <span class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                      <Icon name="pencil" size={16} />
                     </span>
                     <span>{tSectionEdit[uiLang]}</span>
                   </h2>

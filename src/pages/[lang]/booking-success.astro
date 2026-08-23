@@ -1,6 +1,7 @@
 ---
 export const prerender = false;  // ⬅️ 🔥 ESTA LÍNEA ES LA CLAVE
 import Layout from "../../layouts/Layout.astro";
+import Icon from "@/components/icons/Icon.astro";
 import { DateTime } from "luxon";
 
 const { lang } = Astro.params;
@@ -23,10 +24,10 @@ let fechaISO = "";
 // =============================
 const T = {
   title: {
-    es: "🎉 Reserva confirmada",
-    en: "🎉 Booking confirmed",
-    it: "🎉 Prenotazione confermata",
-    fr: "🎉 Réservation confirmée",
+    es: "Reserva confirmada",
+    en: "Booking confirmed",
+    it: "Prenotazione confermata",
+    fr: "Réservation confirmée",
   },
   subtitle: {
     es: "Te hemos enviado un email con todos los detalles.",
@@ -130,7 +131,12 @@ if (!reservaId) {
             <!-- ENCABEZADO -->
             <div class="flex items-start justify-between mb-8">
               <div>
-                <h1 class="text-3xl font-bold text-gray-900">{T.title[lang]}</h1>
+                <h1 class="text-3xl font-bold text-gray-900 inline-flex items-center gap-2.5">
+                  <span class="inline-flex w-9 h-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                    <Icon name="check-circle" size={20} />
+                  </span>
+                  {T.title[lang]}
+                </h1>
                 <p class="text-gray-600">{T.subtitle[lang]}</p>
               </div>
 

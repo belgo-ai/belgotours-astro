@@ -9,9 +9,15 @@ export default {
   },
 
   colors: {
+    /* Alineado a #facc15 — el amarillo de marca ya usado de forma
+       consistente en ~10 componentes (theme-color, cookie banner,
+       reviews, guías, AI assistant) y en global.css --brand-yellow.
+       Antes brand.yellow=#F5C542 era una tonalidad distinta usada
+       sólo por .btn-primary — inconsistencia real de marca, corregida
+       aquí (no se inventa un color nuevo, se unifica al ya dominante). */
     brand: {
-      yellow: '#F5C542',
-      'yellow-dark': '#D9AC2C',
+      yellow: '#facc15',
+      'yellow-dark': '#f4c10f',
       black: '#0D0D0D',
       'black-soft': '#1A1A1A',
       white: '#FFFFFF',

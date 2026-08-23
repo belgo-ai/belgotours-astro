@@ -1,17 +1,34 @@
 import type { APIRoute } from "astro";
+import { getFullTourCatalog } from "@/lib/tourCatalog";
 
 // Sitemap oficial de BelgoTours — única fuente declarada en robots.txt.
-// Lista hand-written, NO generada desde Strapi. Cuando se publique un
-// tour/artículo de blog nuevo hay que añadir aquí su URL manualmente
-// (NEW_TOUR_SITEMAP_AUTOMATION=NO, ver CURRENT_GATE.md/BACKLOG.md,
-// bloque B06B). Ya existe `getTourSlugs()` en `src/lib/api.js`, que
-// podría usarse para generar esta lista dinámicamente desde Strapi en
-// un futuro bloque — no implementado aquí para no cambiar la
-// arquitectura sin autorización explícita.
+// B09 Gate 15 — las URLs de TOURS ahora se generan desde el catálogo
+// real de Strapi (getFullTourCatalog, mismo endpoint público ya
+// usado por Home/SearchBox/related-tours). Esta ruta ya es SSR (sin
+// prerender), así que un tour publicado en Strapi aparece aquí en la
+// siguiente petición, sin build/deploy. El resto (home/blog/B2B) se
+// mantiene hand-written: no son catálogo dinámico, son un puñado fijo
+// de páginas editoriales.
+//
+// Prioridad determinista sin inventar un campo de Strapi que no
+// existe: free tours (el producto principal, alta frecuencia de
+// cambio real vía disponibilidad) > el resto.
 
 const base = "https://belgotours.com";
 
+function tourPriority(tipoTour: string): { priority: string; changefreq: string } {
+  return tipoTour === "free"
+    ? { priority: "0.9", changefreq: "daily" }
+    : { priority: "0.7", changefreq: "weekly" };
+}
+
 export const GET: APIRoute = async () => {
+  const catalog = await getFullTourCatalog();
+  const tourUrls = catalog.map((t) => ({
+    loc: `${base}/${t.locale}/tours/${t.slug}`,
+    ...tourPriority(t.tipo_tour),
+  }));
+
   const urls = [
     // HOME — máxima prioridad
     { loc: `${base}/es/`, priority: "1.0", changefreq: "weekly" },
@@ -20,24 +37,8 @@ export const GET: APIRoute = async () => {
     { loc: `${base}/fr/`, priority: "0.9", changefreq: "weekly" },
     { loc: `${base}/pt/`, priority: "0.7", changefreq: "weekly" },
 
-    // TOURS ES — alta prioridad
-    { loc: `${base}/es/tours/free-tour-bruselas`, priority: "1.0", changefreq: "daily" },
-    { loc: `${base}/es/tours/free-tour-brujas`, priority: "0.9", changefreq: "daily" },
-    { loc: `${base}/es/tours/free-tour-cerveza-bruselas`, priority: "0.9", changefreq: "daily" },
-    { loc: `${base}/es/tours/tour-chocolate-cerveza-bruselas`, priority: "0.8", changefreq: "weekly" },
-    { loc: `${base}/es/tours/tour-privado-bruselas`, priority: "0.8", changefreq: "weekly" },
-    { loc: `${base}/es/tours/tour-privado-brujas`, priority: "0.7", changefreq: "weekly" },
-
-    // TOURS EN
-    { loc: `${base}/en/tours/free-tour-brussels`, priority: "1.0", changefreq: "daily" },
-    { loc: `${base}/en/tours/private-tour-brussels`, priority: "0.8", changefreq: "weekly" },
-
-    // TOURS IT
-    { loc: `${base}/it/tours/free-tour-bruxelles`, priority: "0.9", changefreq: "daily" },
-    { loc: `${base}/it/tours/tour-privato-bruxelles`, priority: "0.7", changefreq: "weekly" },
-
-    // TOURS FR
-    { loc: `${base}/fr/tours/tour-prive-bruxelles`, priority: "0.8", changefreq: "weekly" },
+    // TOURS (ES/EN/IT/FR) — dinámico desde Strapi
+    ...tourUrls,
 
     // BLOG ES
     { loc: `${base}/es/blog/`, priority: "0.7", changefreq: "weekly" },

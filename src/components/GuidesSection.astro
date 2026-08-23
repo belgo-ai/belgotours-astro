@@ -1,4 +1,6 @@
 ---
+import Icon from "@/components/icons/Icon.astro";
+
 interface Props {
   lang: string;
 }
@@ -99,8 +101,8 @@ try {
                   class="w-32 h-32 rounded-full object-cover mb-4 border-2 border-[#FACC15]"
                 />
               ) : (
-                <div class="w-32 h-32 rounded-full mb-4 border-2 border-[#FACC15] bg-neutral-800 flex items-center justify-center text-neutral-500 text-3xl">
-                  👤
+                <div class="w-32 h-32 rounded-full mb-4 border-2 border-[#FACC15] bg-neutral-800 flex items-center justify-center text-neutral-500">
+                  <Icon name="user" size={40} />
                 </div>
               )}
 

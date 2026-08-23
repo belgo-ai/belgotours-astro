@@ -5,11 +5,14 @@ import Header from "@/components/Header.astro";
 import HeroWrapper from "@/components/home/HeroWrapper.astro";
 import ToursDestacados from "@/components/ToursDestacados.astro";
 import ReviewsSection from "@/components/ReviewsSection.astro";
+import AuthorityTrust from "@/components/AuthorityTrust.astro";
 import GuidesSection from "@/components/GuidesSection.astro";
 import Footer from "@/components/Footer.astro";
 
-// ✅ Searchbox definitivo sin CMS
-import { SEARCHBOX_TOURS } from "@/data/tours/searchbox.tours";
+// B09 Gate 15 — catálogo dinámico desde Strapi (single source of
+// truth). Antes: SEARCHBOX_TOURS, un array estático que había que
+// editar a mano por cada tour nuevo (así se le "olvidó" Beer EN/IT).
+import { getFullTourCatalog, cityKey, kindKey, priceLabel, formatDuration, type TourLocale } from "@/lib/tourCatalog";
 
 /* PARAMS */
 const { lang } = Astro.params as { lang: "es" | "en" | "it" | "fr" | "pt" };
@@ -86,15 +89,26 @@ const heroHighlighted = seo.heroHighlighted;
 const heroImageUrl =
    "/images/HeroRight/free-walking-tour-brussels-historic-center.webp";
  
-const heroBadge = "⭐ 4.9 / 5";
+const heroBadge = "4.9 / 5";
 
 /* SearchBox fallback */
 const searchTitle = "Encuentra tu tour ideal";
 const searchSubtitle = "Reserva en 2 minutos · Cancelación gratuita";
 const searchCta = "Ver tour";
 
-// ✅ Tours para SearchBox (pt muestra todos, otros filtra)
-const tours = SEARCHBOX_TOURS;
+// B09 Gate 15 — tours para SearchBox derivados del catálogo real de
+// Strapi (pt muestra todos, otros idiomas se filtran en el propio
+// SearchBox.astro por tourLang === selectedLang, sin cambios ahí).
+const catalog = await getFullTourCatalog();
+const tours = catalog.map((t) => ({
+  name: t.titulo,
+  duration: formatDuration(t.duracion, t.locale as TourLocale),
+  price: priceLabel(t, t.locale as TourLocale),
+  tourLang: t.locale as "es" | "en" | "it" | "fr",
+  city: cityKey(t.ciudad),
+  kind: kindKey(t.tipo_tour),
+  url: `/${t.locale}/tours/${t.slug}`,
+}));
 ---
 
 <Layout title={seoTitle} description={seoDescription} canonical={canonical}>
@@ -163,9 +177,10 @@ const tours = SEARCHBOX_TOURS;
   />
 
   <!-- TOURS DESTACADOS (bloque SEO + CRO principal) -->
-  <ToursDestacados lang={lang} />
+  <ToursDestacados lang={lang} catalog={catalog} />
 
   <ReviewsSection lang={lang} />
+  <AuthorityTrust lang={lang} />
   <GuidesSection lang={lang} />
 
   <Footer lang={lang} />

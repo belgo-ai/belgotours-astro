@@ -6,18 +6,21 @@ export const prerender = false;
 
 
 import { getTourBySlug, getTourSlugs } from "../../../lib/api.js";
+import { getTourCatalog, getRelatedTours } from "@/lib/tourCatalog";
 import Layout from "@/layouts/Layout.astro";
+import Icon from "@/components/icons/Icon.astro";
 
 import TourHeader from "../../../components/TourHeader.astro";
 import Footer from "../../../components/Footer.astro";
 
 import ReviewsPro from "@/components/reviews-pro/ReviewsPro.astro";
+import TourReviewForm from "@/components/reviews-pro/TourReviewForm.astro";
+import AuthorityTrust from "@/components/AuthorityTrust.astro";
 // import GuidesSection from "../../../components/GuidesSection.astro";
 import GuidesSectionTour from "../../../components/tours/GuidesSectionTour.astro";
 
 
 import AIAssistant from "../../../components/tours/AIAssistant.astro";
-import GamificationSystem from "../../../components/tours/GamificationSystem.astro";
 
 import BookingForm from "../../../components/booking/BookingForm.astro";
 import PrivateRequestForm from "../../../components/booking/PrivateRequestForm.astro";
@@ -621,60 +624,10 @@ const breadcrumbSchema = {
 
 /* =========================================================
 RELATED TOURS (internal linking — B06D, SEO-007)
-Mapa estático frontend, mismo idioma primero (CONTENT_LANGUAGE),
-solo entre slugs reales que existen hoy. No deriva de Strapi (no hay
-relación explícita en el CMS todavía — ver RELATED_TOURS_DATA_MODEL
-en BACKLOG.md/CURRENT_GATE.md para la mejora futura recomendada).
-Bruselas es el clúster comercial prioritario (los 4 tours de Bruselas
-se enlazan entre sí); Brujas se mantiene sano pero no se mezcla en
-ese clúster — sus 2 tours se enlazan entre sí y además hacia el
-flagship de Bruselas (upsell hacia el producto principal), sin que
-Bruselas enlace de vuelta a Brujas.
+B09 Gate 15 — derivado del catálogo real de Strapi (nunca cruza
+idioma/CONTENT_LANGUAGE). Publicar un tour nuevo en Strapi lo hace
+aparecer aquí automáticamente, sin tocar este archivo.
 ========================================================= */
-const RELATED_TOURS: Record<string, Record<string, string[]>> = {
-  es: {
-    "free-tour-bruselas": ["free-tour-cerveza-bruselas", "tour-chocolate-cerveza-bruselas", "tour-privado-bruselas"],
-    "free-tour-cerveza-bruselas": ["free-tour-bruselas", "tour-chocolate-cerveza-bruselas", "tour-privado-bruselas"],
-    "tour-chocolate-cerveza-bruselas": ["free-tour-bruselas", "free-tour-cerveza-bruselas", "tour-privado-bruselas"],
-    "tour-privado-bruselas": ["free-tour-bruselas", "free-tour-cerveza-bruselas", "tour-chocolate-cerveza-bruselas"],
-    "free-tour-brujas": ["tour-privado-brujas", "free-tour-bruselas"],
-    "tour-privado-brujas": ["free-tour-brujas", "tour-privado-bruselas"],
-  },
-  en: {
-    "free-tour-brussels": ["private-tour-brussels"],
-    "private-tour-brussels": ["free-tour-brussels"],
-  },
-  it: {
-    "free-tour-bruxelles": ["tour-privato-bruxelles"],
-    "tour-privato-bruxelles": ["free-tour-bruxelles"],
-  },
-  fr: {
-    // Único tour real en francés hoy (tour-prive-bruxelles): sin
-    // relacionados reales que enlazar todavía (SEO-007, huérfano por
-    // falta de contenido FR, no por un bug de este bloque).
-  },
-};
-
-const RELATED_TOUR_LABELS: Record<string, Record<string, string>> = {
-  es: {
-    "free-tour-bruselas": "Free Tour Bruselas",
-    "free-tour-cerveza-bruselas": "Tour de la Cerveza en Bruselas",
-    "tour-chocolate-cerveza-bruselas": "Tour de Chocolate y Cerveza",
-    "tour-privado-bruselas": "Tour Privado en Bruselas",
-    "free-tour-brujas": "Free Tour Brujas",
-    "tour-privado-brujas": "Tour Privado en Brujas",
-  },
-  en: {
-    "free-tour-brussels": "Free Tour Brussels",
-    "private-tour-brussels": "Private Tour in Brussels",
-  },
-  it: {
-    "free-tour-bruxelles": "Free Tour Bruxelles",
-    "tour-privato-bruxelles": "Tour Privato a Bruxelles",
-  },
-  fr: {},
-};
-
 const RELATED_SECTION_TITLE: Record<string, string> = {
   es: "También te puede interesar",
   en: "Discover more BelgoTours experiences",
@@ -682,11 +635,16 @@ const RELATED_SECTION_TITLE: Record<string, string> = {
   fr: "",
 };
 
-const relatedSlugs = RELATED_TOURS[lang]?.[tour.slug] ?? [];
-const relatedTours = relatedSlugs.map((slug) => ({
-  slug,
-  href: `/${lang}/tours/${slug}`,
-  label: RELATED_TOUR_LABELS[lang]?.[slug] ?? slug,
+const catalogForLang = await getTourCatalog(lang as "es" | "en" | "it" | "fr");
+const relatedCatalogItems = getRelatedTours(catalogForLang, {
+  slug: tour.slug,
+  ciudad: tour.ciudad,
+  tipo_tour: tour.tipo_tour,
+}, 3);
+const relatedTours = relatedCatalogItems.map((t) => ({
+  slug: t.slug,
+  href: `/${lang}/tours/${t.slug}`,
+  label: t.titulo,
 }));
   ---
 
@@ -771,20 +729,20 @@ decoding="async"
 </p>
 
 <!-- Chips -->
-<div class="flex flex-wrap justify-center items-center gap-2 text-xs md:text-base text-white/80 mb-6">
+<div class="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 text-xs md:text-base text-white/80 mb-6">
 {heroConfig?.mostrar_duracion !== false && durationLabel && (
-<span>⏱️ {durationLabel}</span>
+<span class="inline-flex items-center gap-1.5"><Icon name="clock" /> {durationLabel}</span>
 )}
 {/*
 {heroConfig?.mostrar_max_personas !== false && tour.maxPersonas && (
-  <span>👥 {tour.maxPersonas}</span>
+  <span class="inline-flex items-center gap-1.5"><Icon name="users" /> {tour.maxPersonas}</span>
 )}
 */}
 
-{langLabel && <span>🌍 {langLabel}</span>}
-{cityLabel && <span>🏙️ {cityLabel}</span>}
+{langLabel && <span class="inline-flex items-center gap-1.5"><Icon name="globe" /> {langLabel}</span>}
+{cityLabel && <span class="inline-flex items-center gap-1.5"><Icon name="map-pin" /> {cityLabel}</span>}
 {reviewCount > 0 && (
-<span>⭐ {rating.toFixed(1)} ({reviewCount})</span>
+<span class="inline-flex items-center gap-1.5"><Icon name="star" class="text-yellow-400" /> {rating.toFixed(1)} ({reviewCount})</span>
 )}
 </div>
 
@@ -834,7 +792,7 @@ target="_blank"
 rel="noopener"
 class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semibold px-8 py-3 rounded-xl transition duration-300 inline-flex items-center justify-center gap-2"
 >
-<span>📍 {ui.verEnMapa}</span>
+<span class="inline-flex items-center gap-1.5"><Icon name="map-pin" size={16} /> {ui.verEnMapa}</span>
 </a>
 )}
 </div>
@@ -994,8 +952,8 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
               </h3>
 
               {punto.duracion && (
-                <div class="text-sm text-gray-500 mb-4 flex items-center gap-1">
-                  ⏱️ <span>{punto.duracion}</span>
+                <div class="text-sm text-gray-500 mb-4 flex items-center gap-1.5">
+                  <Icon name="clock" /> <span>{punto.duracion}</span>
                 </div>
               )}
 
@@ -1072,7 +1030,7 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
             rel="noopener"
             class="inline-flex items-center gap-2 bg-brand-yellow text-brand-black font-bold px-6 py-3 rounded-xl hover:bg-brand-yellow-dark transition"
           >
-            📍 {ui.verEnMapa}
+            <Icon name="map-pin" size={16} /> {ui.verEnMapa}
           </a>
         )}
 
@@ -1104,9 +1062,17 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
       <!-- Reviews -->
       <ReviewsPro lang={lang} tourSlug={tour.slug} />
 
+      <!-- Gate 17 — formulario público de reseña (canal adicional al
+           flujo verificado por token, mismo modelo/moderación) -->
+      <TourReviewForm lang={lang} tourSlug={tour.slug} />
+
     </div>
   </div>
 </section>
+
+<!-- Gate 18 — autoridad institucional + presencia en plataformas
+     externas verificadas (nivel 3/4, por debajo de reviews propias) -->
+<AuthorityTrust lang={lang} />
 
 <!-- 6b) FAQ -->
 <TourFAQ
@@ -1223,9 +1189,17 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
 />
 
 )}
-{tour.elementosUnicos?.gamificacion && (
-<GamificationSystem tourId={tour.slug} tourName={tour.titulo} client:load />
-)}
+{/* B09 Premium Visual System — GamificationSystem retirado de tour
+    pages (§9): premios listados (100/300/500 pts → sticker/chocolate/
+    15% descuento) sin ningún mecanismo real de canje — ni código de
+    cupón, ni conexión con reservas/booking, ni verificación de staff.
+    Logros auto-reportados por click, sin verificación (selfie/trivia/
+    spot secreto se completan al instante sin hacer nada real en el
+    tour). Mismo principio ya aplicado en Gate 9 (FAKE_SCARCITY=
+    FORBIDDEN): no se promete al cliente un beneficio que no se puede
+    cumplir operativamente. Componente conservado en
+    src/components/tours/GamificationSystem.astro por si se rediseña
+    con canje real en el futuro — sólo se retiró su uso aquí. */}
 
 <style>
 /* ======================================================

@@ -1,0 +1,82 @@
+---
+/*
+ * Sistema de iconos único del sitio — B09 Gate: Premium Visual System.
+ * Un solo componente, un solo <svg>, mismo stroke/peso/baseline en
+ * todos los usos — sustituye al emoji dependiente del SO en
+ * metadata/booking/confirmación/estado/trust. Sin librería nueva.
+ */
+interface Props {
+  name:
+    | "clock"
+    | "map-pin"
+    | "star"
+    | "globe"
+    | "users"
+    | "calendar"
+    | "check"
+    | "check-circle"
+    | "x"
+    | "alert-triangle"
+    | "lock"
+    | "pencil"
+    | "save"
+    | "bookmark"
+    | "message-circle"
+    | "menu"
+    | "backpack"
+    | "user"
+    | "external-link";
+  size?: number;
+  class?: string;
+  "aria-hidden"?: boolean;
+  "aria-label"?: string;
+}
+
+const {
+  name,
+  size = 18,
+  class: className = "",
+  "aria-hidden": ariaHidden = true,
+  "aria-label": ariaLabel,
+} = Astro.props;
+
+const paths: Record<Props["name"], string> = {
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+  "map-pin": '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',
+  star: '<path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6-5.9-3.3-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8Z"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  users: '<circle cx="9" cy="8" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 8.2a3.2 3.2 0 0 1 0 6.2M21.5 20a6 6 0 0 0-5-5.9"/>',
+  calendar: '<rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  check: '<path d="M4 12.5l5.5 5.5L20 7"/>',
+  "check-circle": '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/>',
+  x: '<path d="M5 5l14 14M19 5L5 19"/>',
+  "alert-triangle": '<path d="M12 3.5 22 20.5H2Z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.5" r="0.9" fill="currentColor" stroke="none"/>',
+  lock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"/>',
+  pencil: '<path d="M4 20l1-4.5L15.5 5 19 8.5 8.5 19 4 20Z"/><path d="M13 7l4 4"/>',
+  save: '<path d="M5 3.5h11L20.5 8v12.5H5Z"/><path d="M8 3.5V9h8V3.5M8 14.5h8v6H8Z"/>',
+  bookmark: '<path d="M6 3.5h12v17l-6-4-6 4Z"/>',
+  "message-circle": '<path d="M21 12a8.5 8.5 0 0 1-12.4 7.6L3 21l1.5-5.3A8.5 8.5 0 1 1 21 12Z"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  backpack: '<path d="M8.5 8.5V6a3.5 3.5 0 0 1 7 0v2.5"/><rect x="5.5" y="8.5" width="13" height="12.5" rx="2.5"/><path d="M9 12.5h6M9 16h6"/>',
+  user: '<circle cx="12" cy="8" r="3.7"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
+  "external-link": '<path d="M18 13.5V19a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19V7A1.5 1.5 0 0 1 5 5.5h5.5"/><path d="M14.5 3.5H20.5V9.5"/><path d="M20 4l-9 9"/>',
+};
+
+const label = ariaLabel ?? name;
+---
+
+<svg
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  class={`belgo-icon inline-block shrink-0 align-[-0.15em] ${className}`}
+  aria-hidden={ariaHidden ? "true" : undefined}
+  aria-label={ariaHidden ? undefined : label}
+  role={ariaHidden ? undefined : "img"}
+  set:html={paths[name]}
+/>

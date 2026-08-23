@@ -1,0 +1,105 @@
+---
+// Gate 18 — bloque de autoridad/confianza institucional + presencia
+// en plataformas externas verificadas. Nivel 3/4 de jerarquía (por
+// debajo de reviews propias, nunca compitiendo con el CTA de
+// reserva). Contenido factual, verificado directamente contra las
+// URLs reales antes de escribir este componente — ver
+// CURRENT_GATE.md, Gate 18, para el detalle de cada verificación.
+//
+// No alimenta Product/LocalBusiness AggregateRating — es puro texto
+// SSR con enlaces salientes reales, sin JS de terceros, sin schema
+// adicional.
+import Icon from "@/components/icons/Icon.astro";
+
+interface Props {
+  lang: "es" | "en" | "it" | "fr" | "pt";
+}
+
+const { lang } = Astro.props;
+type SupportedLang = "es" | "en" | "it" | "fr";
+const SUPPORTED_LANGS: SupportedLang[] = ["es", "en", "it", "fr"];
+const safeLang: SupportedLang = SUPPORTED_LANGS.includes(lang as SupportedLang) ? (lang as SupportedLang) : "en";
+
+const VISIT_BRUSSELS_URL =
+  "https://www.visit.brussels/en/visitors/venue-details.Belgo-Tours-Free-Tours-of-Brussels.50002834";
+
+// Sólo plataformas con presencia real de BelgoTours verificada
+// directamente (listado activo, no una mención de tercero) antes de
+// escribir este archivo — ver Gate 18. Sin FreeTour.com: no se
+// encontró un listado real de BelgoTours ahí.
+const PLATFORMS = [
+  { name: "GuruWalk", url: "https://www.guruwalk.com/walks/36515-free-tour-brussels-local-guide-real-secrets" },
+  { name: "Civitatis", url: "https://www.civitatis.com/en/brussels/free-tour-brussels/" },
+  { name: "TripAdvisor", url: "https://www.tripadvisor.com/Attraction_Review-g188644-d20284634-Reviews-BelgoTours-Brussels.html" },
+  { name: "GetYourGuide", url: "https://www.getyourguide.com/belgotours-s240321/" },
+];
+
+const TEXTS = {
+  es: {
+    visitBrussels: "Listado en visit.brussels",
+    visitBrusselsSub: "El portal oficial de turismo de Bruselas",
+    platformsLabel: "También disponible en",
+  },
+  en: {
+    visitBrussels: "Listed on visit.brussels",
+    visitBrusselsSub: "Brussels' official tourism portal",
+    platformsLabel: "Also available on",
+  },
+  it: {
+    visitBrussels: "Presente su visit.brussels",
+    visitBrusselsSub: "Il portale turistico ufficiale di Bruxelles",
+    platformsLabel: "Disponibile anche su",
+  },
+  fr: {
+    visitBrussels: "Référencé sur visit.brussels",
+    visitBrusselsSub: "Le portail touristique officiel de Bruxelles",
+    platformsLabel: "Également disponible sur",
+  },
+};
+
+const t = TEXTS[safeLang];
+---
+
+<section class="py-10 border-t border-neutral-100">
+  <div class="container mx-auto px-4 max-w-3xl">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6 text-center md:text-left">
+
+      <!-- Autoridad institucional -->
+      <a
+        href={VISIT_BRUSSELS_URL}
+        target="_blank"
+        rel="noopener"
+        class="inline-flex items-center gap-2.5 justify-center md:justify-start group"
+      >
+        <span class="inline-flex w-9 h-9 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 group-hover:bg-yellow-50 group-hover:text-yellow-600 transition-colors shrink-0">
+          <Icon name="external-link" size={16} />
+        </span>
+        <span class="text-left">
+          <span class="block text-sm font-semibold text-neutral-900">{t.visitBrussels}</span>
+          <span class="block text-xs text-neutral-500">{t.visitBrusselsSub}</span>
+        </span>
+      </a>
+
+      <!-- Presencia en plataformas verificadas -->
+      <div class="flex flex-col items-center md:items-end gap-1.5">
+        <span class="text-xs font-semibold uppercase tracking-wide text-neutral-400">{t.platformsLabel}</span>
+        <div class="flex flex-wrap items-center justify-center md:justify-end gap-x-3 gap-y-1">
+          {PLATFORMS.map((p, i) => (
+            <>
+              <a
+                href={p.url}
+                target="_blank"
+                rel="noopener"
+                class="text-sm font-medium text-neutral-600 hover:text-neutral-900 underline decoration-neutral-300 underline-offset-2 transition-colors"
+              >
+                {p.name}
+              </a>
+              {i < PLATFORMS.length - 1 && <span class="text-neutral-300 text-sm" aria-hidden="true">·</span>}
+            </>
+          ))}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>

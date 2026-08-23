@@ -1,4 +1,6 @@
 ---
+import Icon from "@/components/icons/Icon.astro";
+
 interface Props {
   heroTitle: string;
   heroSubtitle: string;
@@ -39,7 +41,7 @@ const {
 
         <!-- Badge superior -->
         <div class="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-white/10 border border-white/15 backdrop-blur-sm text-xs uppercase tracking-widest">
-          <span>⭐ 4.9/5</span>
+          <span class="inline-flex items-center gap-1"><Icon name="star" size={12} /> 4.9/5</span>
           <span class="w-1 h-1 rounded-full bg-white/50"></span>
           <span>10K+ viajeros</span>
           <span class="w-1 h-1 rounded-full bg-white/50"></span>
@@ -63,7 +65,7 @@ const {
         <!-- Trust bar tipo Google Travel -->
         <div class="flex flex-wrap gap-4 md:gap-6">
           <div class="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 backdrop-blur-sm">
-            <span class="text-yellow-300 text-2xl">⭐</span>
+            <span class="text-yellow-300"><Icon name="star" size={22} /></span>
             <div>
               <div class="font-semibold text-base md:text-lg">{currentLang.trust.rating}</div>
               <div class="text-xs md:text-sm text-white/70">{currentLang.trust.reviews}</div>
@@ -71,7 +73,7 @@ const {
           </div>
 
           <div class="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 backdrop-blur-sm">
-            <span class="text-emerald-300 text-2xl">👥</span>
+            <span class="text-emerald-300"><Icon name="users" size={22} /></span>
             <div>
               <div class="font-semibold text-base md:text-lg">{currentLang.trust.travelers}</div>
               <div class="text-xs md:text-sm text-white/70">{currentLang.trust.travelersText}</div>
@@ -79,7 +81,7 @@ const {
           </div>
 
           <div class="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 backdrop-blur-sm">
-            <span class="text-red-300 text-2xl">🎓</span>
+            <span class="text-red-300"><Icon name="check-circle" size={22} /></span>
             <div>
               <div class="font-semibold text-base md:text-lg">{currentLang.trust.guides}</div>
               <div class="text-xs md:text-sm text-white/70">{currentLang.trust.certified}</div>
@@ -137,20 +139,20 @@ const {
               <div class="absolute top-4 left-4 flex flex-col gap-2">
                 {heroBadge && (
                   <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-500 text-white text-xs font-semibold shadow">
-                    🔥 {heroBadge}
+                    {heroBadge}
                   </span>
                 )}
 
                 {featuredTour && (
                   <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/90 text-slate-900 text-xs font-semibold">
-                    🚶‍♂️ {featuredTour.type === 'free-tour' ? 'Free Tour' : 'Tour destacado'}
+                    {featuredTour.type === 'free-tour' ? 'Free Tour' : 'Tour destacado'}
                   </span>
                 )}
               </div>
 
               <!-- Rating -->
               <div class="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 text-xs text-white">
-                <span>⭐ {currentLang.trust.rating}</span>
+                <span class="inline-flex items-center gap-1"><Icon name="star" size={12} /> {currentLang.trust.rating}</span>
                 <span class="w-1 h-1 rounded-full bg-white/60"></span>
                 <span>{currentLang.trust.reviews}</span>
               </div>
@@ -170,12 +172,12 @@ const {
                 {featuredTour && (
                   <>
                     <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100">
-                      <span>⏱️</span>
+                      <Icon name="clock" size={13} />
                       <span>{featuredTour.duration}</span>
                     </div>
 
                     <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100">
-                      <span>🌍</span>
+                      <Icon name="globe" size={13} />
                       <span>{featuredTour.idiomas[0]}</span>
                     </div>
                   </>

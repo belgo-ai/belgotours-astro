@@ -1,4 +1,6 @@
 ---
+import Icon from "@/components/icons/Icon.astro";
+
 interface Props {
   imageUrl: string;
   lang: "es" | "en" | "it" | "fr" | "pt";
@@ -13,8 +15,8 @@ const TEXTS = {
   es: {
     title: "Free Tour por el centro histórico",
     subtitle: "Bruselas · Guía local · Grupos reducidos",
-    duration: "⏱ 2 h 15 min",
-    languages: "🌍 Varios idiomas",
+    duration: "2 h 15 min",
+    languages: "Varios idiomas",
     price: "Aportación libre",
     description:
       "Reserva sin pago previo. Al finalizar el tour, decides libremente cuánto aportar según tu experiencia.",
@@ -23,8 +25,8 @@ const TEXTS = {
   en: {
     title: "Free Walking Tour of the Historic Center",
     subtitle: "Brussels · Local guide · Small groups",
-    duration: "⏱ 2 h 15 min",
-    languages: "🌍 Multiple languages",
+    duration: "2 h 15 min",
+    languages: "Multiple languages",
     price: "Pay what you want",
     description:
       "Book with no upfront payment. At the end of the tour, you decide how much to contribute based on your experience.",
@@ -33,8 +35,8 @@ const TEXTS = {
   it: {
     title: "Free Tour del centro storico",
     subtitle: "Bruxelles · Guida locale · Piccoli gruppi",
-    duration: "⏱ 2 h 15 min",
-    languages: "🌍 Più lingue",
+    duration: "2 h 15 min",
+    languages: "Più lingue",
     price: "Offerta libera",
     description:
       "Prenota senza pagamento anticipato. Alla fine del tour, decidi liberamente quanto offrire in base alla tua esperienza.",
@@ -43,8 +45,8 @@ const TEXTS = {
   fr: {
     title: "Free Tour du centre historique",
     subtitle: "Bruxelles · Guide local · Petits groupes",
-    duration: "⏱ 2 h 15 min",
-    languages: "🌍 Plusieurs langues",
+    duration: "2 h 15 min",
+    languages: "Plusieurs langues",
     price: "Contribution libre",
     description:
       "Réservez sans paiement préalable. À la fin du tour, vous décidez librement du montant à offrir selon votre expérience.",
@@ -53,8 +55,8 @@ const TEXTS = {
   pt: {
     title: "Free Tour pelo centro histórico",
     subtitle: "Bruxelas · Guia local · Grupos pequenos",
-    duration: "⏱ 2 h 15 min",
-    languages: "🌍 Vários idiomas",
+    duration: "2 h 15 min",
+    languages: "Vários idiomas",
     price: "Contribuição livre",
     description:
       "Reserve sem pagamento antecipado. Ao final do tour, você decide livremente quanto contribuir de acordo com sua experiência.",
@@ -102,11 +104,11 @@ const t = TEXTS[lang] ?? TEXTS.es;
 
       <!-- META INFO -->
       <div class="flex flex-wrap gap-2 text-xs text-neutral-600">
-        <span class="px-2 py-1 rounded-full bg-neutral-100">
-          {t.duration}
+        <span class="px-2 py-1 rounded-full bg-neutral-100 inline-flex items-center gap-1">
+          <Icon name="clock" size={14} /> {t.duration}
         </span>
-        <span class="px-2 py-1 rounded-full bg-neutral-100">
-          {t.languages}
+        <span class="px-2 py-1 rounded-full bg-neutral-100 inline-flex items-center gap-1">
+          <Icon name="globe" size={14} /> {t.languages}
         </span>
         <span class="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
           {t.price}

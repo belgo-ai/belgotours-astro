@@ -1,5 +1,7 @@
 ---
 // src/components/booking/ParticipantCounter.astro
+import Icon from "@/components/icons/Icon.astro";
+
 interface Props {
   lang?: string;
   showMaxHint?: boolean;
@@ -17,12 +19,13 @@ const { lang = "es", showMaxHint = true } = Astro.props as Props;
 
   <!-- Título -->
   <div class="flex items-center justify-between">
-    <h3 class="font-semibold text-gray-900 text-base">
-      {lang === 'es' ? '👥 Participantes' :
-       lang === 'en' ? '👥 Participants' :
-       lang === 'it' ? '👥 Partecipanti' :
-       lang === 'fr' ? '👥 Participants' :
-       '👥 Participantes'}
+    <h3 class="font-semibold text-gray-900 text-base inline-flex items-center gap-1.5">
+      <Icon name="users" />
+      {lang === 'es' ? 'Participantes' :
+       lang === 'en' ? 'Participants' :
+       lang === 'it' ? 'Partecipanti' :
+       lang === 'fr' ? 'Participants' :
+       'Participantes'}
     </h3>
 
     {showMaxHint && (

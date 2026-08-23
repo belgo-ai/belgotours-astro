@@ -1,0 +1,289 @@
+---
+// Gate 17 — formulario público de reseña, compacto, embebido en la
+// propia landing del tour. Canal adicional al flujo verificado por
+// token (review-token / resenas/[token].astro) — NO lo sustituye, NO
+// crea un segundo modelo de datos. Envía a
+// POST /api/reviews/submit-public (Strapi), que siempre deja la
+// reseña en estado "pendiente" para moderación en el dashboard
+// existente (CRM → Reviews), igual que cualquier otra reseña.
+//
+// Identidad del tour: tourSlug/lang llegan como props desde la propia
+// página del tour (tour.slug real de Strapi + lang de la URL) — el
+// visitante nunca elige manualmente qué producto/idioma está
+// reseñando.
+import Icon from "@/components/icons/Icon.astro";
+
+interface Props {
+  tourSlug: string;
+  lang: "es" | "en" | "it" | "fr";
+}
+
+const { tourSlug, lang } = Astro.props;
+
+const STRAPI_URL = import.meta.env.PUBLIC_STRAPI_URL || "https://api.belgotours.com/api";
+const submitUrl = `${STRAPI_URL.replace(/\/$/, "")}/reviews/submit-public`;
+
+const TEXTS = {
+  es: {
+    eyebrow: "¿Ya hiciste este tour?",
+    title: "Comparte tu experiencia",
+    ratingLabel: "Tu valoración",
+    starLabel: (n: number) => `${n} de 5 estrellas`,
+    name: "Tu nombre",
+    email: "Tu email",
+    emailHint: "No se publica — sólo para verificación interna.",
+    country: "País (opcional)",
+    comment: "Cuéntanos qué te pareció el tour",
+    commentPlaceholder: "¿Qué fue lo que más disfrutaste?",
+    minChars: "Mínimo 20 caracteres",
+    submit: "Enviar reseña",
+    submitting: "Enviando…",
+    disclaimer: "Tu reseña será revisada antes de publicarse.",
+    successTitle: "¡Gracias!",
+    successBody: "Tu opinión fue enviada y será revisada antes de publicarse.",
+    errorBody: "No se pudo enviar tu reseña. Inténtalo de nuevo en unos minutos.",
+  },
+  en: {
+    eyebrow: "Have you taken this tour?",
+    title: "Share your experience",
+    ratingLabel: "Your rating",
+    starLabel: (n: number) => `${n} of 5 stars`,
+    name: "Your name",
+    email: "Your email",
+    emailHint: "Never published — internal verification only.",
+    country: "Country (optional)",
+    comment: "Tell us what you thought of the tour",
+    commentPlaceholder: "What did you enjoy most?",
+    minChars: "Minimum 20 characters",
+    submit: "Submit review",
+    submitting: "Sending…",
+    disclaimer: "Your review will be checked before it's published.",
+    successTitle: "Thank you!",
+    successBody: "Your review was submitted and will be checked before publishing.",
+    errorBody: "We couldn't send your review. Please try again in a few minutes.",
+  },
+  it: {
+    eyebrow: "Hai partecipato a questo tour?",
+    title: "Condividi la tua esperienza",
+    ratingLabel: "La tua valutazione",
+    starLabel: (n: number) => `${n} su 5 stelle`,
+    name: "Il tuo nome",
+    email: "La tua email",
+    emailHint: "Mai pubblicata — solo per verifica interna.",
+    country: "Paese (facoltativo)",
+    comment: "Raccontaci cosa ne hai pensato del tour",
+    commentPlaceholder: "Cosa ti è piaciuto di più?",
+    minChars: "Minimo 20 caratteri",
+    submit: "Invia recensione",
+    submitting: "Invio…",
+    disclaimer: "La tua recensione sarà controllata prima della pubblicazione.",
+    successTitle: "Grazie!",
+    successBody: "La tua opinione è stata inviata e sarà controllata prima della pubblicazione.",
+    errorBody: "Non è stato possibile inviare la recensione. Riprova tra qualche minuto.",
+  },
+  fr: {
+    eyebrow: "Avez-vous fait ce tour?",
+    title: "Partagez votre expérience",
+    ratingLabel: "Votre note",
+    starLabel: (n: number) => `${n} sur 5 étoiles`,
+    name: "Votre nom",
+    email: "Votre email",
+    emailHint: "Jamais publié — vérification interne uniquement.",
+    country: "Pays (facultatif)",
+    comment: "Dites-nous ce que vous avez pensé du tour",
+    commentPlaceholder: "Qu'avez-vous le plus apprécié?",
+    minChars: "Minimum 20 caractères",
+    submit: "Envoyer l'avis",
+    submitting: "Envoi…",
+    disclaimer: "Votre avis sera vérifié avant publication.",
+    successTitle: "Merci !",
+    successBody: "Votre avis a été envoyé et sera vérifié avant publication.",
+    errorBody: "Impossible d'envoyer votre avis. Réessayez dans quelques minutes.",
+  },
+};
+
+const t = TEXTS[lang] ?? TEXTS.es;
+const formId = `tour-review-form-${tourSlug}`;
+---
+
+<div class="card max-w-2xl mx-auto mt-10" id={formId}>
+  <div class="p-6 md:p-8">
+    <p class="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-1">{t.eyebrow}</p>
+    <h3 class="text-xl md:text-2xl font-extrabold text-neutral-900 mb-6">{t.title}</h3>
+
+    <form class="review-form space-y-5" novalidate>
+      <input type="hidden" name="tour_slug" value={tourSlug} />
+      <input type="hidden" name="locale" value={lang} />
+
+      <!-- Honeypot — invisible/inalcanzable para un visitante real -->
+      <div class="hp-field" aria-hidden="true">
+        <label for={`${formId}-website`}>Website</label>
+        <input type="text" id={`${formId}-website`} name="website" tabindex="-1" autocomplete="off" />
+      </div>
+
+      <fieldset class="star-rating">
+        <legend class="label">{t.ratingLabel}</legend>
+        <div class="star-rating-stars">
+          {[5, 4, 3, 2, 1].map((n) => (
+            <>
+              <input type="radio" name="rating_general" id={`${formId}-star-${n}`} value={n} required />
+              <label for={`${formId}-star-${n}`}>
+                <span class="sr-only">{t.starLabel(n)}</span>
+                <Icon name="star" size={30} aria-hidden={true} />
+              </label>
+            </>
+          ))}
+        </div>
+      </fieldset>
+
+      <div>
+        <label class="label" for={`${formId}-name`}>{t.name}</label>
+        <input class="input" type="text" id={`${formId}-name`} name="cliente_nombre" required maxlength="120" />
+      </div>
+
+      <div>
+        <label class="label" for={`${formId}-email`}>{t.email}</label>
+        <input class="input" type="email" id={`${formId}-email`} name="cliente_email" required maxlength="180" />
+        <p class="text-xs text-neutral-400 mt-1">{t.emailHint}</p>
+      </div>
+
+      <div>
+        <label class="label" for={`${formId}-country`}>{t.country}</label>
+        <input class="input" type="text" id={`${formId}-country`} name="cliente_pais" maxlength="100" />
+      </div>
+
+      <div>
+        <label class="label" for={`${formId}-comment`}>{t.comment}</label>
+        <textarea
+          class="input"
+          id={`${formId}-comment`}
+          name="comentario_publico"
+          required
+          minlength="20"
+          maxlength="1000"
+          rows="4"
+          placeholder={t.commentPlaceholder}
+        ></textarea>
+        <div class="flex justify-between mt-1">
+          <span class="text-xs text-neutral-400">{t.minChars}</span>
+          <span class="text-xs text-neutral-400 char-count">0/1000</span>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary w-full justify-center submit-btn" disabled>
+        {t.submit}
+      </button>
+      <p class="text-xs text-neutral-400 text-center">{t.disclaimer}</p>
+
+      <div class="hidden success-msg text-center py-4" role="status">
+        <p class="font-bold text-neutral-900">{t.successTitle}</p>
+        <p class="text-sm text-neutral-600 mt-1">{t.successBody}</p>
+      </div>
+      <p class="hidden error-msg text-sm text-red-600 text-center" role="alert">{t.errorBody}</p>
+    </form>
+  </div>
+</div>
+
+<style>
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .hp-field {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .star-rating-stars {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+  .star-rating-stars input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+  .star-rating-stars label {
+    cursor: pointer;
+    color: var(--star-empty, #d1d5db);
+    transition: color 0.12s;
+  }
+  .star-rating-stars label:hover,
+  .star-rating-stars label:hover ~ label {
+    color: var(--brand-yellow, #facc15);
+  }
+  .star-rating-stars input:checked ~ label {
+    color: var(--brand-yellow, #facc15);
+  }
+  .star-rating-stars input:focus-visible + label {
+    outline: 2px solid var(--brand-yellow, #facc15);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+</style>
+
+<script define:vars={{ submitUrl, formId }}>
+(function () {
+  const wrapper = document.getElementById(formId);
+  if (!wrapper) return;
+  const form = wrapper.querySelector(".review-form");
+  const submitBtn = wrapper.querySelector(".submit-btn");
+  const successMsg = wrapper.querySelector(".success-msg");
+  const errorMsg = wrapper.querySelector(".error-msg");
+  const textarea = wrapper.querySelector('textarea[name="comentario_publico"]');
+  const charCount = wrapper.querySelector(".char-count");
+
+  function checkValid() {
+    submitBtn.disabled = !form.checkValidity();
+  }
+  form.querySelectorAll("input, textarea").forEach((el) => {
+    el.addEventListener("input", checkValid);
+    el.addEventListener("change", checkValid);
+  });
+  textarea?.addEventListener("input", () => {
+    charCount.textContent = `${textarea.value.length}/1000`;
+  });
+  checkValid();
+
+  let submitting = false;
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (submitting) return;
+    submitting = true;
+    submitBtn.disabled = true;
+    errorMsg.classList.add("hidden");
+
+    const formData = new FormData(form);
+    const payload = Object.fromEntries(formData.entries());
+    payload.rating_general = Number(payload.rating_general);
+
+    try {
+      const res = await fetch(submitUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("submit failed");
+
+      form.hidden = true;
+      successMsg.classList.remove("hidden");
+    } catch (err) {
+      errorMsg.classList.remove("hidden");
+      submitBtn.disabled = false;
+      submitting = false;
+    }
+  });
+})();
+</script>

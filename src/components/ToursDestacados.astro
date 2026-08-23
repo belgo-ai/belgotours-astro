@@ -1,17 +1,29 @@
 ---
+import Icon from "@/components/icons/Icon.astro";
+import { getTourCatalog, formatDuration, priceLabel, type TourLocale, type TourCatalogItem } from "@/lib/tourCatalog";
+
 // Props para multi-idioma
 interface Props {
   lang: 'es' | 'en' | 'it' | 'fr' | 'pt';
+  // B09 Gate 15 — catálogo ya obtenido por la página (Home ya lo pide
+  // para SearchBox); si se pasa, evita un segundo fetch redundante al
+  // mismo endpoint. Si no se pasa (otro caller futuro), lo pide él
+  // mismo — sigue funcionando de forma autónoma.
+  catalog?: TourCatalogItem[];
 }
 
-const { lang } = Astro.props;
+const { lang, catalog: catalogProp } = Astro.props;
+
+const LANGUAGE_LABEL: Record<TourLocale, string> = {
+  es: 'Español', en: 'English', it: 'Italiano', fr: 'Français',
+};
 
 // B09 Gate 12 — dimensiones reales medidas (PIL) de cada archivo local
 // en public/images/ToursDestacados/. Necesarias para width/height
 // (CLS) y para saber qué ratio real tiene cada foto antes de decidir
 // cualquier crop — ver hallazgos en CRO_UX_AUDIT.md.
 const IMAGE_DIMENSIONS: Record<string, { w: number; h: number }> = {
-  "/images/ToursDestacados/free-tour-brujas-en-espanol-belgotours.webp": { w: 4032, h: 3024 },
+  "/images/ToursDestacados/free-tour-brujas-en-espanol-belgotours.webp": { w: 800, h: 600 },
   "/images/ToursDestacados/free-tour-cerveza-bruselas-belgotours.webp": { w: 800, h: 533 },
   "/images/ToursDestacados/free-tour-english-brussels-belgotours.webp": { w: 680, h: 450 },
   "/images/ToursDestacados/free-tour-espanol-bruselas-belgotours.webp": { w: 680, h: 450 },
@@ -380,7 +392,7 @@ const toursData = {
 // Textos multi-idioma para la sección
 const sectionTexts = {
   es: {
-    title: "Nuestros <span class='text-blue-600'>Tours Más Populares</span>",
+    title: "Nuestros <span class='text-blue-600'>Tours</span>",
     subtitle:
       "Descubre las experiencias mejor valoradas por miles de viajeros. <span class='font-semibold text-blue-600'>Reserva ahora, paga después.</span>",
     filters: {
@@ -399,12 +411,12 @@ const sectionTexts = {
     cta: {
       button: "Ver Todos los Tours Disponibles",
       features:
-        "Confirmación instantánea • Cancelación gratuita • 👥 Grupos reducidos",
+        "Confirmación instantánea • Cancelación gratuita • Grupos reducidos",
     },
   },
 
   en: {
-    title: "Our <span class='text-blue-600'>Most Popular Tours</span>",
+    title: "Our <span class='text-blue-600'>Tours</span>",
     subtitle:
       "Discover the best-rated experiences by thousands of travelers. <span class='font-semibold text-blue-600'>Book now, pay later.</span>",
     filters: {
@@ -423,12 +435,12 @@ const sectionTexts = {
     cta: {
       button: "View All Available Tours",
       features:
-        "Instant confirmation • Free cancellation • 👥 Small groups",
+        "Instant confirmation • Free cancellation • Small groups",
     },
   },
 
   it: {
-    title: "I Nostri <span class='text-blue-600'>Tour Più Popolari</span>",
+    title: "I Nostri <span class='text-blue-600'>Tour</span>",
     subtitle:
       "Scopri le esperienze meglio valutate da migliaia di viaggiatori. <span class='font-semibold text-blue-600'>Prenota ora, paga dopo.</span>",
     filters: {
@@ -447,12 +459,12 @@ const sectionTexts = {
     cta: {
       button: "Vedi Tutti i Tour Disponibili",
       features:
-        "Conferma immediata • Cancellazione gratuita • 👥 Gruppi piccoli",
+        "Conferma immediata • Cancellazione gratuita • Gruppi piccoli",
     },
   },
 
   fr: {
-    title: "Nos <span class='text-blue-600'>Tours Les Plus Populaires</span>",
+    title: "Nos <span class='text-blue-600'>Tours</span>",
     subtitle:
       "Découvrez les expériences les mieux notées par des milliers de voyageurs. <span class='font-semibold text-blue-600'>Réservez maintenant, payez plus tard.</span>",
     filters: {
@@ -471,12 +483,12 @@ const sectionTexts = {
     cta: {
       button: "Voir Tous les Tours Disponibles",
       features:
-        "Confirmation instantanée • Annulation gratuite • 👥 Petits groupes",
+        "Confirmation instantanée • Annulation gratuite • Petits groupes",
     },
   },
 
   pt: {
-    title: "Nossos <span class='text-blue-600'>Tours Mais Populares</span>",
+    title: "Nossos <span class='text-blue-600'>Tours</span>",
     subtitle:
       "Descubra as experiências mais bem avaliadas por milhares de viajantes. <span class='font-semibold text-blue-600'>Reserve agora, pague depois.</span>",
     filters: {
@@ -495,7 +507,7 @@ const sectionTexts = {
     cta: {
       button: "Ver Todos os Tours Disponíveis",
       features:
-        "Confirmação instantânea • Cancelamento gratuito • 👥 Grupos pequenos",
+        "Confirmação instantânea • Cancelamento gratuito • Grupos pequenos",
     },
   },
 };
@@ -503,7 +515,56 @@ const sectionTexts = {
 const safeLang: 'es' | 'en' | 'it' | 'fr' | 'pt' =
   ['es', 'en', 'it', 'fr', 'pt'].includes(lang) ? lang : 'es';
 
-const toursDestacados = toursData[safeLang];
+// B09 Gate 15 — el array curado de arriba (toursData) sigue siendo la
+// fuente de la presentación rica (foto real, descripción editada) de
+// los tours que ya la tienen. Pero la LISTA de qué tours aparecen ya
+// no depende de que alguien añada una entrada aquí a mano: se
+// completa con cualquier tour publicado en Strapi que todavía no
+// tenga entrada curada (p.ej. un tour nuevo recién publicado), para
+// que sea descubrible sin editar este archivo. 'pt' no es un locale
+// real de Strapi — esa vista combinada de varios idiomas reales queda
+// igual que antes, sin cambios.
+const curatedTours = toursData[safeLang];
+
+let autoTours: any[] = [];
+if (safeLang !== 'pt') {
+  const curatedSlugs = new Set(curatedTours.map((t) => t.slug));
+  const catalog = catalogProp
+    ? catalogProp.filter((t) => t.locale === safeLang)
+    : await getTourCatalog(safeLang as TourLocale);
+  const uncurated = catalog.filter((t) => !curatedSlugs.has(t.slug));
+
+  autoTours = uncurated.map((t) => {
+    const duracionText = formatDuration(t.duracion, safeLang as TourLocale);
+    const price = priceLabel(t, safeLang as TourLocale);
+    return {
+      id: t.id,
+      titulo: t.titulo,
+      descripcion: "",
+      precio: t.pago_libre ? 0 : (t.precio_base ?? 0),
+      moneda: "€",
+      tipoPrecio: price,
+      precioTexto: t.booking_mode === "request" ? price : undefined,
+      duracion: duracionText,
+      idiomas: [LANGUAGE_LABEL[safeLang as TourLocale]],
+      rating: 0,
+      reviews: 0,
+      // Gate 15B — foto real del hero del tour en Strapi (misma que
+      // usa su propia página), sin inventar ni reutilizar la de otro
+      // tour. Si Strapi todavía no tiene hero_media cargado para este
+      // tour, t.hero es null y la card usa el placeholder de icono.
+      imagen: t.hero?.url ?? "",
+      imagenWidth: t.hero?.width,
+      imagenHeight: t.hero?.height,
+      alt: t.hero?.alt || t.titulo,
+      badge: null as string | null,
+      categoria: t.tipo_tour === "privado" ? "tour-privado" : t.tipo_tour === "especial" ? "tour-especial" : "free-tour",
+      slug: t.slug,
+    };
+  });
+}
+
+const toursDestacados = [...curatedTours, ...autoTours];
 const texts = sectionTexts[safeLang];
 
 // Función para determinar el texto del precio
@@ -592,16 +653,30 @@ const getTourUrl = (tourSlug: string, lang: string, tourIdiomas: string[]) => {
 
       <!-- Imagen -->
       <div class="relative h-52 overflow-hidden">
-        <img
-          src={tour.imagen}
-          alt={tour.alt || tour.titulo}
-          width={IMAGE_DIMENSIONS[tour.imagen]?.w || undefined}
-          height={IMAGE_DIMENSIONS[tour.imagen]?.h || undefined}
-          loading="lazy"
-          decoding="async"
-          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-        <div class="absolute inset-0 bg-black/10"></div>
+        {tour.imagen ? (
+          <>
+            <img
+              src={tour.imagen}
+              alt={tour.alt || tour.titulo}
+              width={IMAGE_DIMENSIONS[tour.imagen]?.w || tour.imagenWidth || undefined}
+              height={IMAGE_DIMENSIONS[tour.imagen]?.h || tour.imagenHeight || undefined}
+              loading="lazy"
+              decoding="async"
+              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+            <div class="absolute inset-0 bg-black/10"></div>
+          </>
+        ) : (
+          // B09 Gate 15 — tour recién descubierto desde Strapi sin
+          // foto de card dedicada todavía (el endpoint público de
+          // listado no expone hero_media hoy — ver nota en
+          // tourCatalog.ts). Sin inventar ni reutilizar una foto de
+          // otro tour: placeholder honesto con el propio sistema de
+          // iconos, no una imagen falsa.
+          <div class="w-full h-full flex items-center justify-center bg-neutral-900 text-yellow-400">
+            <Icon name={tour.categoria === "tour-privado" ? "users" : tour.categoria === "tour-especial" ? "star" : "map-pin"} size={40} />
+          </div>
+        )}
       </div>
 
       <!-- Contenido -->
@@ -633,11 +708,11 @@ const getTourUrl = (tourSlug: string, lang: string, tourIdiomas: string[]) => {
         <!-- Detalles -->
         <div class="flex flex-wrap gap-4 mb-4 text-sm text-gray-500">
           <div class="flex items-center gap-1">
-            <span>⏱️</span>
+            <Icon name="clock" size={14} />
             <span>{tour.duracion}</span>
           </div>
           <div class="flex items-center gap-1">
-            <span>🌍</span>
+            <Icon name="globe" size={14} />
             <span>{tour.idiomas[0]}</span>
             {tour.idiomas.length > 1 && (
               <span class="text-xs text-gray-400">

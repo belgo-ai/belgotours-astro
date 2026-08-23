@@ -2,6 +2,7 @@
 import "@/styles/global.css";
 import WhatsAppFloat from "@/components/WhatsAppFloat.astro";
 import CookieBanner from "@/components/CookieBanner.astro";
+import { getTourLocalizationGroups } from "@/lib/tourCatalog";
 
 
 interface Props {
@@ -50,38 +51,27 @@ const LEGAL_LANGS: Record<string, string[]> = {
   '/legal-notice': ["es", "en", "it", "fr"],
 };
 
-const TOUR_MAP: Record<string, Record<string, string>> = {
-  // Free Tour Bruselas: equivalentes reales ES/EN/IT. FR no se incluye porque no existe Free Tour francés.
-  // PT no se incluye: no existe contenido de tour en portugués (ver B06A).
-  '/tours/free-tour-bruselas':              {es:'/tours/free-tour-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles'},
-  '/tours/free-tour-brussels':              {es:'/tours/free-tour-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles'},
-  '/tours/free-tour-bruxelles':             {es:'/tours/free-tour-bruselas',en:'/tours/free-tour-brussels',it:'/tours/free-tour-bruxelles'},
-
-  // Free Tour Brujas: por ahora solo ES.
-  '/tours/free-tour-brujas':                {es:'/tours/free-tour-brujas'},
-
-  // Free Tour Cerveza: por ahora solo ES.
-  '/tours/free-tour-cerveza-bruselas':      {es:'/tours/free-tour-cerveza-bruselas'},
-
-  // Tour Chocolate y Cerveza: tour especial solo ES.
-  '/tours/tour-chocolate-cerveza-bruselas': {es:'/tours/tour-chocolate-cerveza-bruselas'},
-
-  // Tours privados Bruselas: equivalentes reales ES/EN/IT/FR.
-  '/tours/tour-privado-bruselas':           {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles'},
-  '/tours/private-tour-brussels':           {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles'},
-  '/tours/tour-privato-bruxelles':          {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles'},
-  '/tours/tour-prive-bruxelles':            {es:'/tours/tour-privado-bruselas',en:'/tours/private-tour-brussels',it:'/tours/tour-privato-bruxelles',fr:'/tours/tour-prive-bruxelles'},
-
-  // Tour privado Brujas: por ahora solo ES.
-  '/tours/tour-privado-brujas':             {es:'/tours/tour-privado-brujas'},
-};
-const slugMap = isTourPath ? (TOUR_MAP[hrefPath] ?? null) : null;
-
+// B09 Gate 15 — hreflang de tours ya NO depende de un mapa estático
+// mantenido a mano (TOUR_MAP). Se deriva en tiempo de request de la
+// familia de localización real de Strapi (mismo documentId = mismo
+// producto en distintos idiomas, ver src/lib/tourCatalog.ts). Un
+// tour nuevo publicado en Strapi con locale hermano ES/EN/IT/FR
+// aparece aquí automáticamente, sin editar este archivo.
 let hreflangLinks: {lang: string; href: string}[] = [];
 if (isHomePage) {
   hreflangLinks = HOME_LANGS.map(lang => ({lang, href: `https://belgotours.com/${lang}/`}));
-} else if (isTourPath && slugMap) {
-  hreflangLinks = Object.entries(slugMap).map(([lang, path]) => ({lang, href: `https://belgotours.com/${lang}${path}`}));
+} else if (isTourPath) {
+  const currentSlug = hrefPath.replace(/^\/tours\//, '');
+  const groups = await getTourLocalizationGroups();
+  const family = [...groups.values()].find((members) =>
+    members.some((m) => m.locale === currentLang && m.slug === currentSlug)
+  );
+  if (family) {
+    hreflangLinks = family.map((m) => ({
+      lang: m.locale,
+      href: `https://belgotours.com/${m.locale}/tours/${m.slug}`,
+    }));
+  }
 } else if (isLegal) {
   const legalKey = Object.keys(LEGAL_LANGS).find(p => hrefPath.startsWith(p));
   const legalLangs = legalKey ? LEGAL_LANGS[legalKey] : [];
