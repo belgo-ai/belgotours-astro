@@ -1,5 +1,9 @@
 ---
 import Icon from "@/components/icons/Icon.astro";
+import {
+  APPROVED_GUIDE_PHOTO_FALLBACK,
+  APPROVED_GUIDE_PHOTO_ALT,
+} from "@/lib/guidePhotoFallback";
 
 interface Props {
   lang: string;
@@ -40,29 +44,6 @@ const texts = {
 };
 
 const t = texts[lang] || texts.es;
-
-// Gate 22 — foto real para un guía activo concreto que hoy existe en
-// Strapi sin `foto` cargada (documentId a5nibov6t3byqe25wuwqd46t,
-// "Rodrigo Rodriguez", activo=true — confirmado vía
-// GET /api/guias?populate=foto antes de escribir esto). NO se sube a
-// Strapi (eso sería un cambio de backend/producción, fuera de este
-// Gate): es un fallback puramente frontend, atado a este documentId
-// específico — no se aplica a ningún otro guía sin foto que pueda
-// existir en el futuro, para no atribuir esta foto a la persona
-// equivocada.
-const LOCAL_GUIDE_PHOTO_FALLBACK: Record<string, string> = {
-  a5nibov6t3byqe25wuwqd46t:
-    "/images/guides/guia-local-belgotours-paraguas-amarillo-bruselas.webp",
-};
-const LOCAL_GUIDE_ALT_FALLBACK: Record<string, Record<string, string>> = {
-  a5nibov6t3byqe25wuwqd46t: {
-    es: "Guía local de BelgoTours con paraguas amarillo en Bruselas",
-    en: "BelgoTours local guide with yellow umbrella in Brussels",
-    it: "Guida locale di BelgoTours con ombrello giallo a Bruxelles",
-    fr: "Guide local BelgoTours avec parapluie jaune à Bruxelles",
-    pt: "Guia local da BelgoTours com guarda-chuva amarelo em Bruxelas",
-  },
-};
 
 // Fetch guías activas
 let guias = [];
@@ -117,13 +98,13 @@ try {
             fotoAttrs?.formats?.thumbnail?.url ||
             fotoAttrs?.formats?.medium?.url ||
             fotoAttrs?.url ||
-            LOCAL_GUIDE_PHOTO_FALLBACK[g.documentId];
+            APPROVED_GUIDE_PHOTO_FALLBACK[g.documentId];
           // Gate 22D — PUBLIC_GUIDE_NAME=HIDDEN: alt nunca incluye el
           // nombre personal del guía, venga la foto de Strapi o del
           // fallback local — sólo el rol genérico (o la descripción
           // específica ya existente para la foto de fallback).
           const fotoAlt =
-            (!fotoAttrs?.url && LOCAL_GUIDE_ALT_FALLBACK[g.documentId]?.[lang]) ||
+            (!fotoAttrs?.url && APPROVED_GUIDE_PHOTO_ALT[g.documentId]?.[lang]) ||
             t.role;
 
           return (

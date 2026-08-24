@@ -9,6 +9,10 @@
  */
 
 import Icon from "@/components/icons/Icon.astro";
+import {
+  APPROVED_GUIDE_PHOTO_FALLBACK,
+  APPROVED_GUIDE_PHOTO_ALT,
+} from "@/lib/guidePhotoFallback";
 
 interface Props {
   lang: string;
@@ -30,21 +34,31 @@ const texts = {
     title: "Tus guías en este tour",
     subtitle: "Guías locales, cercanos y con experiencia. Te contamos historia + tips reales.",
     role: "Guía local BelgoTours",
+    // Gate 22E — estado sin relación de guía activa: confianza a
+    // nivel de equipo, sin prometer una persona concreta.
+    teamTitle: "Nuestros guías locales",
+    teamSubtitle: "El tour es realizado por guías locales de BelgoTours.",
   },
   en: {
     title: "Your guides for this tour",
     subtitle: "Local, friendly and experienced guides. History + real local tips.",
     role: "BelgoTours local guide",
+    teamTitle: "Our local guides",
+    teamSubtitle: "This tour is run by BelgoTours local guides.",
   },
   it: {
     title: "Le guide di questo tour",
     subtitle: "Guide locali, simpatiche ed esperte. Storia + consigli reali.",
     role: "Guida locale BelgoTours",
+    teamTitle: "Le nostre guide locali",
+    teamSubtitle: "Il tour è condotto da guide locali di BelgoTours.",
   },
   fr: {
     title: "Vos guides pour ce tour",
     subtitle: "Guides locaux, sympathiques et expérimentés. Histoire + conseils locaux.",
     role: "Guide local BelgoTours",
+    teamTitle: "Nos guides locaux",
+    teamSubtitle: "Cette visite est assurée par des guides locaux de BelgoTours.",
   },
 };
 
@@ -83,13 +97,24 @@ function guidePhotoUrl(foto: any) {
 const normalizedGuides = (Array.isArray(guias) ? guias : [])
   .map((g) => {
     const a = pickAttrs(g);
+    // Gate 22E — documentId real de Strapi (mismo identificador que ya
+    // usa GuidesSection.astro en Home) para poder aplicar el fallback
+    // de foto aprobado únicamente al guía exacto al que pertenece.
+    const documentId = g?.documentId ?? a?.documentId ?? "";
+    const strapiFotoUrl = guidePhotoUrl(a?.foto);
     return {
       id: g?.id ?? a?.id ?? crypto.randomUUID(),
+      documentId,
       nombre: a?.nombre || "",
       slug: a?.slug || "",
       activo: typeof a?.activo === "boolean" ? a.activo : true,
       idiomas: Array.isArray(a?.idiomas) ? a.idiomas : [],
-      fotoUrl: guidePhotoUrl(a?.foto),
+      // Gate 22E — prioridad de foto: 1) foto real de Strapi para ESTE
+      // guía, 2) fallback local aprobado SOLO si documentId coincide
+      // exactamente con el guía al que pertenece (nunca se atribuye a
+      // otra persona), 3) vacío → placeholder neutro de icono.
+      fotoUrl: strapiFotoUrl || APPROVED_GUIDE_PHOTO_FALLBACK[documentId] || "",
+      fotoIsApprovedFallback: !strapiFotoUrl && Boolean(APPROVED_GUIDE_PHOTO_FALLBACK[documentId]),
     };
   })
   .filter((g) => g.activo && g.nombre);
@@ -107,27 +132,34 @@ function normalizeLangTag(code: string) {
   return c.toUpperCase();
 }
 
-// Gate 22D — PUBLIC_GUIDE_NAME=HIDDEN: el alt de la foto de un guía
-// nunca incluye su nombre personal, sólo el rol genérico ya
-// traducido por idioma.
-const imgAlt = t.role;
+// Gate 22D/22E — PUBLIC_GUIDE_NAME=HIDDEN: el alt de la foto de un
+// guía nunca incluye su nombre personal — rol genérico, salvo la
+// descripción específica ya aprobada para la foto de fallback local.
+function guideImgAlt(g: (typeof normalizedGuides)[number]) {
+  return (g.fotoIsApprovedFallback && APPROVED_GUIDE_PHOTO_ALT[g.documentId]?.[lang]) || t.role;
+}
 ---
 
-{hasGuides && (
-  <section id="guides" class="py-12 md:py-20 bg-white">
-    <div class="container mx-auto px-4">
-      <div class="max-w-6xl mx-auto">
-        <!-- Header -->
-        <div class="text-center max-w-3xl mx-auto mb-10">
-          <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-            {title}
-          </h2>
-          <p class="text-gray-600 text-base md:text-lg">
-            {subtitle}
-          </p>
-        </div>
+{/* Gate 22E — la sección de confianza "guía local" ya no desaparece
+    cuando el tour no tiene relación de guía activa en Strapi: se
+    muestra un estado genérico de equipo (sin nombre, sin foto de una
+    persona concreta) en vez de nada. Mismo componente/markup para
+    ambos estados — sólo cambia el encabezado y si se listan guías
+    reales o una única tarjeta de equipo. */}
+<section id="guides" class="py-12 md:py-20 bg-white">
+  <div class="container mx-auto px-4">
+    <div class="max-w-6xl mx-auto">
+      <!-- Header -->
+      <div class="text-center max-w-3xl mx-auto mb-10">
+        <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+          {hasGuides ? title : t.teamTitle}
+        </h2>
+        <p class="text-gray-600 text-base md:text-lg">
+          {hasGuides ? subtitle : t.teamSubtitle}
+        </p>
+      </div>
 
-        <!-- Grid -->
+      {hasGuides ? (
         <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {guidesToShow.map((g) => (
             <article class="rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-card hover:shadow-lg transition">
@@ -135,7 +167,7 @@ const imgAlt = t.role;
                 {g.fotoUrl ? (
                   <img
                     src={g.fotoUrl}
-                    alt={imgAlt}
+                    alt={guideImgAlt(g)}
                     width="120"
                     height="120"
                     loading="lazy"
@@ -168,17 +200,35 @@ const imgAlt = t.role;
             </article>
           ))}
         </div>
+      ) : (
+        // Gate 22E — sin relación de guía activa: confianza a nivel de
+        // equipo/marca, nunca la foto de un guía concreto (eso
+        // implicaría, falsamente, que esa persona hace este tour) ni
+        // un nombre inventado. Misma tarjeta visual que el estado con
+        // guías, con el placeholder neutro ya existente.
+        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <article class="rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-card">
+            <div class="flex items-center justify-center mb-4">
+              <div class="w-28 h-28 rounded-full bg-gray-100 ring-4 ring-yellow-200 flex items-center justify-center text-gray-400">
+                <Icon name="user" size={36} />
+              </div>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900">
+              {t.role}
+            </h3>
+          </article>
+        </div>
+      )}
 
-        <!-- Nota opcional (suave) -->
-        {normalizedGuides.length > 4 && (
-          <div class="text-center mt-8 text-sm text-gray-500">
-            {lang === "es" && "En algunos horarios puede asignarse otro guía del equipo según disponibilidad."}
-            {lang === "en" && "On some timeslots, another team guide may be assigned depending on availability."}
-            {lang === "it" && "In alcune fasce orarie potrebbe essere assegnata un’altra guida del team in base alla disponibilità."}
-            {lang === "fr" && "Sur certains créneaux, un autre guide de l’équipe peut être attribué selon la disponibilité."}
-          </div>
-        )}
-      </div>
+      <!-- Nota opcional (suave) -->
+      {hasGuides && normalizedGuides.length > 4 && (
+        <div class="text-center mt-8 text-sm text-gray-500">
+          {lang === "es" && "En algunos horarios puede asignarse otro guía del equipo según disponibilidad."}
+          {lang === "en" && "On some timeslots, another team guide may be assigned depending on availability."}
+          {lang === "it" && "In alcune fasce orarie potrebbe essere assegnata un’altra guida del team in base alla disponibilità."}
+          {lang === "fr" && "Sur certains créneaux, un autre guide de l’équipe peut être attribué selon la disponibilité."}
+        </div>
+      )}
     </div>
-  </section>
-)}
+  </div>
+</section>
