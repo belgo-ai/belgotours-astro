@@ -22,6 +22,12 @@ export interface TourHero {
   width: number;
   height: number;
   alt: string | null;
+  // Gate media/image system — mismos 4 formatos que Strapi ya genera
+  // y que tourSlug.astro ya usa para el hero/itinerario de la landing
+  // (mediaSrcSet); aquí se expone lo mismo para las cards de
+  // ToursDestacados, que hoy piden siempre el tamaño 'medium' fijo
+  // sin importar el ancho real de la card. '' si no hay formatos.
+  srcset: string;
 }
 
 export interface TourCatalogItem {
@@ -48,6 +54,15 @@ function absoluteMediaUrl(path: string): string {
   return `${apiBase}${path}`;
 }
 
+function heroSrcSet(imagen: any): string {
+  if (!imagen?.formats) return '';
+  return (['thumbnail', 'small', 'medium', 'large'] as const)
+    .map((key) => imagen.formats[key])
+    .filter((f: any) => f?.url && f?.width)
+    .map((f: any) => `${absoluteMediaUrl(f.url)} ${f.width}w`)
+    .join(', ');
+}
+
 function normalizeHero(raw: any): TourHero | null {
   const imagen = raw?.hero_media?.imagen;
   if (!imagen?.url) return null;
@@ -58,6 +73,7 @@ function normalizeHero(raw: any): TourHero | null {
     width: chosen.width,
     height: chosen.height,
     alt: imagen.alternativeText ?? null,
+    srcset: heroSrcSet(imagen),
   };
 }
 

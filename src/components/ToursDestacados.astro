@@ -566,6 +566,7 @@ if (safeLang !== 'pt') {
       // tour. Si Strapi todavía no tiene hero_media cargado para este
       // tour, t.hero es null y la card usa el placeholder de icono.
       imagen: t.hero?.url ?? "",
+      imagenSrcSet: t.hero?.srcset || undefined,
       imagenWidth: t.hero?.width,
       imagenHeight: t.hero?.height,
       alt: t.hero?.alt || t.titulo,
@@ -686,6 +687,8 @@ const getTourUrl = (tourSlug: string, lang: string, tourIdiomas: string[]) => {
           <>
             <img
               src={tour.imagen}
+              srcset={tour.imagenSrcSet || undefined}
+              sizes={tour.imagenSrcSet ? "(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 80vw" : undefined}
               alt={tour.alt || tour.titulo}
               width={IMAGE_DIMENSIONS[tour.imagen]?.w || tour.imagenWidth || undefined}
               height={IMAGE_DIMENSIONS[tour.imagen]?.h || tour.imagenHeight || undefined}

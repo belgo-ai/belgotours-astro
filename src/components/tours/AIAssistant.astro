@@ -1,5 +1,7 @@
 ---
 
+import Icon from "@/components/icons/Icon.astro";
+
 // Componente de Asistente IA - UX Premium BelgoTours
 export interface Props {
   tourId: string;
@@ -16,7 +18,8 @@ const UI = {
   es: {
     title: "BelgoAI Assistant",
     subtitlePrefix: "Para",
-    hello: `¡Hola! Soy tu asistente para el ${tourName}. ¿En qué puedo ayudarte?`,
+    ariaLabel: "¿Tienes dudas? Te ayudo con tu reserva",
+    hello: `¿Tienes dudas? Te ayudo con tu reserva del ${tourName}.`,
     placeholder: "Escribe tu pregunta…",
     quick1: "Punto de encuentro",
     quick2: "⏱️ Duración y horarios",
@@ -28,7 +31,8 @@ const UI = {
   en: {
     title: "BelgoAI Assistant",
     subtitlePrefix: "For",
-    hello: `Hi! I'm your assistant for ${tourName}. How can I help?`,
+    ariaLabel: "Questions about your booking? I can help",
+    hello: `Questions about your booking? I can help with the ${tourName}.`,
     placeholder: "Type your question…",
     quick1: "Meeting point",
     quick2: "⏱️ Duration & schedule",
@@ -40,7 +44,8 @@ const UI = {
   it: {
     title: "BelgoAI Assistant",
     subtitlePrefix: "Per",
-    hello: `Ciao! Sono il tuo assistente per ${tourName}. Come posso aiutarti?`,
+    ariaLabel: "Dubbi sulla prenotazione? Posso aiutarti",
+    hello: `Dubbi sulla prenotazione? Posso aiutarti con il ${tourName}.`,
     placeholder: "Scrivi la tua domanda…",
     quick1: "Punto d’incontro",
     quick2: "⏱️ Durata e orari",
@@ -52,7 +57,8 @@ const UI = {
   fr: {
     title: "BelgoAI Assistant",
     subtitlePrefix: "Pour",
-    hello: `Bonjour ! Je suis ton assistant pour ${tourName}. Comment puis-je aider ?`,
+    ariaLabel: "Des questions sur ta réservation ? Je peux t'aider",
+    hello: `Des questions sur ta réservation ? Je peux t'aider pour le ${tourName}.`,
     placeholder: "Écris ta question…",
     quick1: "Point de rencontre",
     quick2: "⏱️ Durée et horaires",
@@ -74,21 +80,25 @@ const t = UI[lang] || UI.es;
   data-tipo={tipo}
   data-tour-id={tourId}
   data-tour-name={tourName}
-  class="fixed bottom-20 right-4 z-40 transition-all duration-300 md:bottom-28 md:right-6"
+  class="fixed bottom-20 right-4 z-40 transition-all duration-300 md:bottom-28 md:right-6 opacity-0 pointer-events-none"
 >
 
-  <!-- Botón flotante -->
-  <button 
+  <!-- Botón flotante — Gate CRO: chip discreto, no un segundo CTA
+       grande. Fondo claro + borde de marca en vez del círculo negro
+       sólido anterior, para leerse como ayuda secundaria y no como un
+       competidor visual del CTA de reserva. -->
+  <button
     id="aiAssistantButton"
-    aria-label="Asistente del tour"
-    class="bg-black text-[#FACC15]
-           w-14 h-14 rounded-full
-           shadow-2xl
+    aria-label={t.ariaLabel}
+    class="bg-white text-neutral-900
+           w-11 h-11 rounded-full
+           border-2 border-[#FACC15]
+           shadow-md
            flex items-center justify-center
            transition-all duration-300
-           hover:scale-110 hover:bg-gray-900"
+           hover:scale-110 hover:bg-neutral-50"
   >
-    <span class="text-xl">🤖</span>
+    <Icon name="message-circle" size={20} aria-hidden={true} />
   </button>
 
   <!-- Chat Container -->
@@ -104,7 +114,7 @@ const t = UI[lang] || UI.es;
     <div class="bg-black text-[#FACC15] p-4 rounded-t-2xl flex-shrink-0">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <span class="text-lg">🤖</span>
+          <Icon name="message-circle" size={18} class="text-[#FACC15]" aria-hidden={true} />
           <div>
             <h3 class="font-bold text-sm text-white">BelgoAI Assistant</h3>
             <p class="text-xs text-yellow-300">{t.subtitlePrefix} {tourName}</p>
@@ -402,13 +412,7 @@ if (document.readyState === "loading") {
   border-radius: 3px;
 }
 
-/* Mobile: siempre separado del CTA */
 @media (max-width: 768px) {
-  #aiAssistant {
-    bottom: 96px !important;
-    right: 16px !important;
-  }
-
   #aiChatContainer {
     width: 90vw !important;
     left: 5vw !important;
@@ -421,13 +425,19 @@ if (document.readyState === "loading") {
    visible, publica su huella real en --bt-cookie-offset y este botón
    se desplaza esa misma cantidad para no quedar tapado — en vez de
    offsets fijos por viewport que se desincronizan con el contenido
-   real del banner. */
+   real del banner.
+
+   CRO Gate — el offset base sube de 5rem/7rem a 6rem/8rem para dejar
+   un margen real (~20px) por encima del CTA persistente #bookingWidget
+   (bottom: 0.75rem/2rem, ver [tourSlug].astro) — antes quedaban a 6px
+   de distancia, prácticamente pegados. #bookingWidget sigue siendo el
+   único CTA dominante; este botón nunca debe tocarlo. */
 #aiFloatingButton {
-  bottom: calc(5rem + var(--bt-cookie-offset, 0px));
+  bottom: calc(6rem + var(--bt-cookie-offset, 0px));
 }
 @media (min-width: 768px) {
   #aiFloatingButton {
-    bottom: calc(7rem + var(--bt-cookie-offset, 0px));
+    bottom: calc(8rem + var(--bt-cookie-offset, 0px));
   }
 }
 </style>

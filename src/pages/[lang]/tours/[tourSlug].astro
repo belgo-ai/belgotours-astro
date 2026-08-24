@@ -218,7 +218,17 @@ claimHero: attrs.claim_hero || "",
 descripcion: attrs.descripcion || "",
 ciudad: attrs.ciudad || "", // bruselas|brujas
 tipo_tour: tipoTour, // free|privado|especial — para eventos GA4 (ver ANALYTICS_PLAN.md)
-idioma: Array.isArray(attrs.idiomas) ? attrs.idiomas[0] : (attrs.idioma || null),
+// Gate — TOUR_LANGUAGE real (idioma en el que se GUÍA este tour),
+// no CONTENT_LANGUAGE (el idioma de la página que se está viendo).
+// El schema de Tour no tiene un campo idioma/idiomas propio (nunca lo
+// tuvo) — el chip que lo mostraba en el hero llevaba tiempo mudo por
+// leer un campo inexistente. La fuente real y ya canónica es
+// `locale`, el mismo campo de Strapi que ya usa SearchBox
+// (`tourLang: t.locale`) para esta misma distinción: cada variante de
+// idioma de un tour es un documento Strapi propio guiado en ese
+// idioma — no es una inferencia de la URL, es el dato real del
+// registro de Strapi que ya se está leyendo.
+idioma: attrs.locale || null,
 booking_mode: bookingMode,
 review_mode: reviewMode,
 
@@ -410,7 +420,17 @@ return `${h} h ${m} min`;
 }
 
 const durationLabel = formatDuration(tour.duracion);
-const langLabel = tour.idioma ? String(tour.idioma).toUpperCase() : "";
+// Gate — nombre completo del idioma del tour, no el código de 2
+// letras (antes `String(tour.idioma).toUpperCase()` habría dado "ES"/
+// "EN"/etc. si el campo hubiera estado poblado; el objetivo es que se
+// lea "Español"/"English" de un vistazo).
+const TOUR_LANGUAGE_LABELS: Record<string, string> = {
+  es: "Español",
+  en: "English",
+  it: "Italiano",
+  fr: "Français",
+};
+const langLabel = tour.idioma ? (TOUR_LANGUAGE_LABELS[tour.idioma] || String(tour.idioma).toUpperCase()) : "";
 const cityLabel = tour.ciudad ? String(tour.ciudad).toUpperCase() : "";
 
 // Subtitle fallback (NO es heading)
