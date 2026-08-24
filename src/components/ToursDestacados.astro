@@ -1,6 +1,6 @@
 ---
 import Icon from "@/components/icons/Icon.astro";
-import { getTourCatalog, formatDuration, priceLabel, type TourLocale, type TourCatalogItem } from "@/lib/tourCatalog";
+import { getTourCatalog, formatDuration, priceLabel, displayTitle, type TourLocale, type TourCatalogItem } from "@/lib/tourCatalog";
 
 // Props para multi-idioma
 interface Props {
@@ -526,20 +526,32 @@ const safeLang: 'es' | 'en' | 'it' | 'fr' | 'pt' =
 // igual que antes, sin cambios.
 const curatedTours = toursData[safeLang];
 
-let autoTours: any[] = [];
+// B09 Gate 22 — el ORDEN de las cards ahora sigue al catálogo real
+// (ya ordenado en tourCatalog.ts: free < especial < privado, id
+// ascendente como desempate) en vez de "primero todas las curadas,
+// después las nuevas al final" — así un tour nuevo descubierto
+// automáticamente (p.ej. Beer) aparece en su posición correcta, no
+// siempre al final.
+let toursDestacados: any[] = curatedTours;
 if (safeLang !== 'pt') {
-  const curatedSlugs = new Set(curatedTours.map((t) => t.slug));
+  const curatedBySlug = new Map(curatedTours.map((t) => [t.slug, t]));
   const catalog = catalogProp
     ? catalogProp.filter((t) => t.locale === safeLang)
     : await getTourCatalog(safeLang as TourLocale);
-  const uncurated = catalog.filter((t) => !curatedSlugs.has(t.slug));
 
-  autoTours = uncurated.map((t) => {
+  toursDestacados = catalog.map((t) => {
+    const curated = curatedBySlug.get(t.slug);
+    if (curated) return curated;
+
     const duracionText = formatDuration(t.duracion, safeLang as TourLocale);
     const price = priceLabel(t, safeLang as TourLocale);
     return {
       id: t.id,
-      titulo: t.titulo,
+      // Gate 22 — título corto real (seo_h1, mismo campo que la landing
+      // usa como H1) para las cards auto-descubiertas; titulo (con
+      // subtítulo SEO largo) sigue siendo la fuente para SEO/meta, no
+      // se toca aquí ni en la landing.
+      titulo: displayTitle(t),
       descripcion: "",
       precio: t.pago_libre ? 0 : (t.precio_base ?? 0),
       moneda: "€",
@@ -563,8 +575,6 @@ if (safeLang !== 'pt') {
     };
   });
 }
-
-const toursDestacados = [...curatedTours, ...autoTours];
 const texts = sectionTexts[safeLang];
 
 // Función para determinar el texto del precio

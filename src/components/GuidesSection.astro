@@ -41,6 +41,29 @@ const texts = {
 
 const t = texts[lang] || texts.es;
 
+// Gate 22 — foto real para un guía activo concreto que hoy existe en
+// Strapi sin `foto` cargada (documentId a5nibov6t3byqe25wuwqd46t,
+// "Rodrigo Rodriguez", activo=true — confirmado vía
+// GET /api/guias?populate=foto antes de escribir esto). NO se sube a
+// Strapi (eso sería un cambio de backend/producción, fuera de este
+// Gate): es un fallback puramente frontend, atado a este documentId
+// específico — no se aplica a ningún otro guía sin foto que pueda
+// existir en el futuro, para no atribuir esta foto a la persona
+// equivocada.
+const LOCAL_GUIDE_PHOTO_FALLBACK: Record<string, string> = {
+  a5nibov6t3byqe25wuwqd46t:
+    "/images/guides/guia-local-belgotours-paraguas-amarillo-bruselas.webp",
+};
+const LOCAL_GUIDE_ALT_FALLBACK: Record<string, Record<string, string>> = {
+  a5nibov6t3byqe25wuwqd46t: {
+    es: "Guía local de BelgoTours con paraguas amarillo en Bruselas",
+    en: "BelgoTours local guide with yellow umbrella in Brussels",
+    it: "Guida locale di BelgoTours con ombrello giallo a Bruxelles",
+    fr: "Guide local BelgoTours avec parapluie jaune à Bruxelles",
+    pt: "Guia local da BelgoTours com guarda-chuva amarelo em Bruxelas",
+  },
+};
+
 // Fetch guías activas
 let guias = [];
 
@@ -75,7 +98,14 @@ try {
     {guias.length > 0 ? (
       <div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
         {guias.map((g) => {
-          const a = g.attributes || {};
+          // Gate 22 — corrección incidental: Strapi 5 devuelve el
+          // recurso "aplanado" (documentId/nombre/foto directamente en
+          // g, sin envoltorio g.attributes de Strapi v4). Con
+          // `g.attributes || {}` el nombre y la foto de Strapi
+          // quedaban silenciosamente vacíos en producción — descubierto
+          // al verificar que la foto real del guía (más abajo) se
+          // mostrara junto a su nombre real, no en blanco.
+          const a = g.attributes || g;
           // B09 Gate 12 — antes usaba directamente la foto ORIGINAL sin
           // redimensionar (formats?.small/thumbnail ya existen en
           // Strapi y GuidesSectionTour.astro ya los usa correctamente
@@ -86,14 +116,18 @@ try {
             fotoAttrs?.formats?.small?.url ||
             fotoAttrs?.formats?.thumbnail?.url ||
             fotoAttrs?.formats?.medium?.url ||
-            fotoAttrs?.url;
+            fotoAttrs?.url ||
+            LOCAL_GUIDE_PHOTO_FALLBACK[g.documentId];
+          const fotoAlt =
+            (!fotoAttrs?.url && LOCAL_GUIDE_ALT_FALLBACK[g.documentId]?.[lang]) ||
+            `${a.nombre} - ${t.role}`;
 
           return (
             <article class="flex flex-col items-center text-center">
               {foto ? (
                 <img
                   src={foto}
-                  alt={`${a.nombre} - ${t.role}`}
+                  alt={fotoAlt}
                   width="128"
                   height="128"
                   loading="lazy"

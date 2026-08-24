@@ -30,6 +30,8 @@ export interface TourCatalogItem {
   locale: TourLocale;
   slug: string;
   titulo: string;
+  seo_h1: string | null;
+  display_priority: number | null; // orden comercial dentro de tipo_tour; null = sin asignar, cae a id ascendente
   duracion: number; // minutos; 0 = dato no cargado todavía en Strapi, no inventar
   ciudad: TourCity;
   tipo_tour: TourType;
@@ -61,6 +63,35 @@ function normalizeHero(raw: any): TourHero | null {
 
 const CATALOG_LOCALES: TourLocale[] = ['es', 'en', 'it', 'fr'];
 
+// Gate 22 / 22B — orden de catálogo. Estructura real, no inferida de
+// texto/slug:
+//   1) tipo_tour (free antes que especial antes que privado — dato
+//      real ya usado en todo el sitio).
+//   2) display_priority ascendente dentro del mismo tipo (campo real
+//      de Strapi, Gate 22B — p.ej. Free Tour general=10, Beer=20, sin
+//      depender de cuál se creó antes).
+//   3) id ascendente como último desempate, sólo cuando dos tours
+//      comparten tipo_tour Y display_priority (o ninguno de los dos
+//      lo tiene todavía) — nunca decide el orden comercial por sí
+//      solo para los productos ya configurados.
+// El backend devuelve la lista ordenada por título (alfabético), lo
+// que colocaba "Free Beer Tour..." antes que "Free Tour..." — el bug
+// real reportado en Gate 22. Se reordena aquí, una sola vez en el
+// origen, para que todo lo que consume el catálogo (SearchBox, cards,
+// sitemap, related tours) lo reciba ya correcto.
+const TIPO_TOUR_RANK: Record<TourType, number> = { free: 0, especial: 1, privado: 2 };
+
+function sortForDisplay(items: TourCatalogItem[]): TourCatalogItem[] {
+  return items.slice().sort((a, b) => {
+    const rank = TIPO_TOUR_RANK[a.tipo_tour] - TIPO_TOUR_RANK[b.tipo_tour];
+    if (rank !== 0) return rank;
+    const pa = a.display_priority ?? Number.POSITIVE_INFINITY;
+    const pb = b.display_priority ?? Number.POSITIVE_INFINITY;
+    if (pa !== pb) return pa - pb;
+    return a.id - b.id;
+  });
+}
+
 // IMPORTANTE: sin caché a nivel de módulo aquí a propósito. En una
 // función serverless "caliente" (Netlify) el módulo persiste entre
 // requests — una caché sin expiración dejaría un tour recién
@@ -82,11 +113,12 @@ async function fetchCatalogForLocale(locale: TourLocale): Promise<TourCatalogIte
     }
     const json = await res.json();
     if (!Array.isArray(json)) return [];
-    return json.map((t: any) => ({
+    const items = json.map((t: any) => ({
       ...t,
       locale,
       hero: normalizeHero(t),
     })) as TourCatalogItem[];
+    return sortForDisplay(items);
   } catch (err) {
     // Fallo de Strapi no debe romper Home/tour pages — degradación
     // controlada: catálogo vacío para ese idioma, no crash.
@@ -183,6 +215,17 @@ export function priceLabel(t: Pick<TourCatalogItem, 'booking_mode' | 'pago_libre
 /** Mapeo ciudad Strapi (es) → clave de ciudad usada por SearchBox. */
 export function cityKey(ciudad: TourCity): 'brussels' | 'bruges' {
   return ciudad === 'brujas' ? 'bruges' : 'brussels';
+}
+
+// Gate 22 — título corto para selector/cards. seo_h1 es el MISMO
+// campo ya usado como H1 real de la landing (tourSlug.astro:
+// `tour.seoH1 || tour.titulo`) — se reutiliza el mismo fallback aquí,
+// sin tocar cómo se usa en la landing ni crear un campo nuevo.
+// `titulo` (con subtítulo SEO largo) sigue siendo la fuente para
+// SEO_title/meta — esto NUNCA sustituye eso, sólo la etiqueta visual
+// del selector/card.
+export function displayTitle(item: Pick<TourCatalogItem, 'seo_h1' | 'titulo'>): string {
+  return (item.seo_h1 && item.seo_h1.trim()) || item.titulo;
 }
 
 /** Mapeo tipo_tour Strapi (es) → clave de "kind" usada por SearchBox. */

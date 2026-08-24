@@ -12,7 +12,7 @@ import Footer from "@/components/Footer.astro";
 // B09 Gate 15 — catálogo dinámico desde Strapi (single source of
 // truth). Antes: SEARCHBOX_TOURS, un array estático que había que
 // editar a mano por cada tour nuevo (así se le "olvidó" Beer EN/IT).
-import { getFullTourCatalog, cityKey, kindKey, priceLabel, formatDuration, type TourLocale } from "@/lib/tourCatalog";
+import { getFullTourCatalog, cityKey, kindKey, priceLabel, formatDuration, displayTitle, type TourLocale } from "@/lib/tourCatalog";
 
 /* PARAMS */
 const { lang } = Astro.params as { lang: "es" | "en" | "it" | "fr" | "pt" };
@@ -101,7 +101,7 @@ const searchCta = "Ver tour";
 // SearchBox.astro por tourLang === selectedLang, sin cambios ahí).
 const catalog = await getFullTourCatalog();
 const tours = catalog.map((t) => ({
-  name: t.titulo,
+  name: displayTitle(t),
   duration: formatDuration(t.duracion, t.locale as TourLocale),
   price: priceLabel(t, t.locale as TourLocale),
   tourLang: t.locale as "es" | "en" | "it" | "fr",

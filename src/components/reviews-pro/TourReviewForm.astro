@@ -38,9 +38,8 @@ const TEXTS = {
     minChars: "Mínimo 20 caracteres",
     submit: "Enviar reseña",
     submitting: "Enviando…",
-    disclaimer: "Tu reseña será revisada antes de publicarse.",
     successTitle: "¡Gracias!",
-    successBody: "Tu opinión fue enviada y será revisada antes de publicarse.",
+    successBody: "Tu opinión ha sido enviada correctamente.",
     errorBody: "No se pudo enviar tu reseña. Inténtalo de nuevo en unos minutos.",
   },
   en: {
@@ -57,9 +56,8 @@ const TEXTS = {
     minChars: "Minimum 20 characters",
     submit: "Submit review",
     submitting: "Sending…",
-    disclaimer: "Your review will be checked before it's published.",
     successTitle: "Thank you!",
-    successBody: "Your review was submitted and will be checked before publishing.",
+    successBody: "Your review has been submitted successfully.",
     errorBody: "We couldn't send your review. Please try again in a few minutes.",
   },
   it: {
@@ -76,9 +74,8 @@ const TEXTS = {
     minChars: "Minimo 20 caratteri",
     submit: "Invia recensione",
     submitting: "Invio…",
-    disclaimer: "La tua recensione sarà controllata prima della pubblicazione.",
     successTitle: "Grazie!",
-    successBody: "La tua opinione è stata inviata e sarà controllata prima della pubblicazione.",
+    successBody: "La tua opinione è stata inviata correttamente.",
     errorBody: "Non è stato possibile inviare la recensione. Riprova tra qualche minuto.",
   },
   fr: {
@@ -95,9 +92,8 @@ const TEXTS = {
     minChars: "Minimum 20 caractères",
     submit: "Envoyer l'avis",
     submitting: "Envoi…",
-    disclaimer: "Votre avis sera vérifié avant publication.",
     successTitle: "Merci !",
-    successBody: "Votre avis a été envoyé et sera vérifié avant publication.",
+    successBody: "Votre avis a bien été envoyé.",
     errorBody: "Impossible d'envoyer votre avis. Réessayez dans quelques minutes.",
   },
 };
@@ -173,7 +169,6 @@ const formId = `tour-review-form-${tourSlug}`;
       <button type="submit" class="btn-primary w-full justify-center submit-btn" disabled>
         {t.submit}
       </button>
-      <p class="text-xs text-neutral-400 text-center">{t.disclaimer}</p>
 
       <div class="hidden success-msg text-center py-4" role="status">
         <p class="font-bold text-neutral-900">{t.successTitle}</p>
