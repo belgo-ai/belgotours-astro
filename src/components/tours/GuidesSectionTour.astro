@@ -107,10 +107,10 @@ function normalizeLangTag(code: string) {
   return c.toUpperCase();
 }
 
-// Accesibilidad: título para imágenes
-function imgAlt(nombre: string) {
-  return nombre ? `${nombre} - ${t.role}` : t.role;
-}
+// Gate 22D — PUBLIC_GUIDE_NAME=HIDDEN: el alt de la foto de un guía
+// nunca incluye su nombre personal, sólo el rol genérico ya
+// traducido por idioma.
+const imgAlt = t.role;
 ---
 
 {hasGuides && (
@@ -135,7 +135,7 @@ function imgAlt(nombre: string) {
                 {g.fotoUrl ? (
                   <img
                     src={g.fotoUrl}
-                    alt={imgAlt(g.nombre)}
+                    alt={imgAlt}
                     width="120"
                     height="120"
                     loading="lazy"
@@ -149,13 +149,12 @@ function imgAlt(nombre: string) {
                 )}
               </div>
 
+              {/* Gate 22D — PUBLIC_GUIDE_NAME=HIDDEN: el nombre
+                  personal del guía no se renderiza; sólo el rol
+                  genérico. */}
               <h3 class="text-lg font-bold text-gray-900">
-                {g.nombre}
-              </h3>
-
-              <p class="text-sm text-yellow-600 font-semibold mt-1">
                 {t.role}
-              </p>
+              </h3>
 
               {g.idiomas.length > 0 && (
                 <div class="flex flex-wrap justify-center gap-2 mt-4">

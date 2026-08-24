@@ -118,9 +118,13 @@ try {
             fotoAttrs?.formats?.medium?.url ||
             fotoAttrs?.url ||
             LOCAL_GUIDE_PHOTO_FALLBACK[g.documentId];
+          // Gate 22D — PUBLIC_GUIDE_NAME=HIDDEN: alt nunca incluye el
+          // nombre personal del guía, venga la foto de Strapi o del
+          // fallback local — sólo el rol genérico (o la descripción
+          // específica ya existente para la foto de fallback).
           const fotoAlt =
             (!fotoAttrs?.url && LOCAL_GUIDE_ALT_FALLBACK[g.documentId]?.[lang]) ||
-            `${a.nombre} - ${t.role}`;
+            t.role;
 
           return (
             <article class="flex flex-col items-center text-center">
@@ -140,11 +144,10 @@ try {
                 </div>
               )}
 
-              <h3 class="text-white font-semibold text-lg">
-                {a.nombre}
-              </h3>
-
-              <p class="text-sm text-[#FACC15] mt-1">
+              {/* Gate 22D — PUBLIC_GUIDE_NAME=HIDDEN: el nombre
+                  personal del guía no se renderiza; sólo el rol
+                  genérico, ya traducido por idioma. */}
+              <p class="text-white font-semibold text-lg">
                 {t.role}
               </p>
 

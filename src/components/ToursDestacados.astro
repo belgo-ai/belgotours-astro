@@ -603,9 +603,14 @@ const getTourUrl = (tourSlug: string, lang: string, tourIdiomas: string[]) => {
   <div class="container mx-auto px-4 max-w-7xl">    
     <!-- Header de la sección -->
     <header class="text-center mb-14">
+      <!-- Gate 22D §24 — heading íntegro en negro/neutral-dark, sin
+           palabra parcial en amarillo (antes: "Tours" en
+           text-yellow-400 dentro del span ya existente en el copy).
+           Mismo copy/HTML, sólo se neutraliza el color del span para
+           que herede el mismo tono que el resto del H2. -->
       <h2
   class="text-3xl md:text-4xl font-extrabold tracking-tight text-neutral-900 mb-4"
-  set:html={texts.title.replace("text-blue-600", "text-yellow-400")}
+  set:html={texts.title.replace("text-blue-600", "text-neutral-900")}
 ></h2>
       <p
   class="text-neutral-600 max-w-2xl mx-auto text-lg"
@@ -650,11 +655,25 @@ const getTourUrl = (tourSlug: string, lang: string, tourIdiomas: string[]) => {
   class="relative bg-white rounded-3xl border border-neutral-200 shadow-sm hover:shadow-xl transition-all duration-300 group tour-card flex flex-col overflow-hidden
          flex-shrink-0 w-[80vw] md:w-auto snap-start"
 >
+      <!-- Gate 22D — tarjeta completa clicable (CRO): capa "stretched
+           link" que cubre toda la superficie no interactiva de la
+           tarjeta, mismo destino que el CTA "Reservar" de abajo. Es un
+           <a> hermano, no un <a> anidado dentro de otro <a> — el CTA
+           conserva su propio z-index más alto para seguir siendo
+           independientemente clicable/enfocable por encima de esta
+           capa. Sin texto visible (aria-label da el nombre accesible),
+           así que no duplica contenido leído por lectores de pantalla
+           aparte del propio link. -->
+      <a
+        href={getTourUrl(tour.slug, lang, tour.idiomas)}
+        aria-label={`${tour.titulo} — ${texts.tourDetails.book}`}
+        class="absolute inset-0 z-10 rounded-3xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-400 focus-visible:outline-offset-2"
+      ></a>
 
 
       <!-- Badge -->
       {tour.badge && (
-        <div class="absolute top-4 left-4 z-10">
+        <div class="absolute top-4 left-4 z-10 pointer-events-none">
           <span class="px-3 py-1 text-xs font-bold rounded-full bg-yellow-400 text-black">
             {tour.badge}
           </span>
@@ -738,7 +757,7 @@ const getTourUrl = (tourSlug: string, lang: string, tourIdiomas: string[]) => {
   <!-- CTA (acción principal a la izquierda) -->
   <a
     href={getTourUrl(tour.slug, lang, tour.idiomas)}
-    class="bg-neutral-900 hover:bg-black text-white font-semibold py-3 px-6 rounded-xl transition duration-300 transform hover:scale-105"
+    class="relative z-20 bg-neutral-900 hover:bg-black text-white font-semibold py-3 px-6 rounded-xl transition duration-300 transform hover:scale-105"
   >
     {texts.tourDetails.book}
   </a>
