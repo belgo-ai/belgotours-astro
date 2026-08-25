@@ -29,7 +29,15 @@ const canonical = `https://belgotours.com/${lang}/`;
 // SEO por idioma — titles únicos, keywords principales, sin canibalización
 const SEO_BY_LANG: Record<string, {title: string; description: string; heroTitle: string; heroSubtitle: string; heroDescription: string; heroHighlighted: string}> = {
   es: {
-    title: "Free Tour Bruselas en Español | Tours en Bélgica · BelgoTours",
+    // Gate C01: título anterior repetía literalmente la frase líder del
+    // title del flagship ("Free Tour Bruselas en Español"), pese a que
+    // el comentario de este bloque ya decía "sin canibalización" — GSC
+    // confirmó impresiones reales de la misma query ("free tour
+    // bruselas") divididas entre esta página y el flagship. Nueva forma
+    // en plural + ambas ciudades para reflejar la intención real de
+    // catálogo de Home, distinta de la intención de reserva específica
+    // del flagship.
+    title: "Free Tours en Bruselas y Brujas en Español · BelgoTours",
     description: "Free Tours en Bruselas y Brujas con guías locales en español. Reserva gratis, paga lo que quieras al final. Grupos pequeños y cancelación gratuita.",
     heroTitle: "Free Tours en Bruselas y Bélgica",
     heroSubtitle: "Descubre Bruselas y Brujas con guías locales expertos",

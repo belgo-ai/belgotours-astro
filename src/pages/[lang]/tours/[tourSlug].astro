@@ -523,12 +523,27 @@ const metaTitle = rawTitle.includes('BelgoTours')
   ? rawTitle
   : `${rawTitle} | BelgoTours`;
 
-// Limpiar HTML de seo_description para meta tag
-const stripHtml = (html: string) => html
-  .replace(/<[^>]*>/g, ' ')
-  .replace(/\s+/g, ' ')
-  .trim()
-  .slice(0, 160);
+// Limpiar HTML de seo_description para meta tag. Gate C01: seo_description
+// en Strapi es contenido largo (varios párrafos), no una meta description
+// corta — un slice(0, 160) puro cortaba a mitad de frase (evidencia: GSC
+// mostró CTR del flagship colapsando de 5.71% a 0.55% en los meses
+// posteriores a introducir este slice, con posición estable/mejorando en
+// el mismo período — snippet roto, no problema de ranking). Ahora corta en
+// el límite de frase más cercano por debajo de 160 chars; si ninguna frase
+// cabe, corta en el límite de palabra más cercano y añade "…".
+const stripHtml = (html: string) => {
+  const text = html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([.,;:!?])/g, '$1')
+    .trim();
+  if (text.length <= 160) return text;
+  const truncated = text.slice(0, 160);
+  const lastSentenceEnd = truncated.lastIndexOf('. ');
+  if (lastSentenceEnd > 60) return truncated.slice(0, lastSentenceEnd + 1);
+  const lastSpace = truncated.lastIndexOf(' ');
+  return `${truncated.slice(0, lastSpace > 0 ? lastSpace : 160)}…`;
+};
 
 const metaDescription =
   (tour.seoDescription && tour.seoDescription.trim())
