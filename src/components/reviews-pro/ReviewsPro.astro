@@ -83,7 +83,12 @@ function pct(part, total) {
 
 const totalReviews = Number(summary?.total || 0);
 const avgRating = Number(summary?.rating || 0);
-const label = summary?.label || ratingLabel(avgRating);
+// WEB-01 — Strapi devuelve `summary.label` siempre en español
+// ("Excelente"); en EN se usa la etiqueta i18n (mismos umbrales). Sólo
+// copy visible: rating, conteo, estrellas y schema no cambian.
+const label = safeLang === "en"
+  ? ratingLabel(avgRating)
+  : (summary?.label || ratingLabel(avgRating));
 
 const stars = summary?.stars || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 ---

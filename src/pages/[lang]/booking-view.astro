@@ -52,12 +52,6 @@ const T = {
     it: "Riepilogo del tour",
     fr: "Résumé du tour",
   },
-  viewEdit: {
-    es: "Modificar reserva",
-    en: "Edit booking",
-    it: "Modifica prenotazione",
-    fr: "Modifier la réservation",
-  },
   whatsapp: {
     es: "Compartir por WhatsApp",
     en: "Share via WhatsApp",
@@ -217,13 +211,6 @@ const MAPA_PUNTO_ENCUENTRO =
 
           <!-- ACCIONES -->
           <div class="space-y-4">
-            <a
-              href={`/${lang}/booking-edit?id=${reserva.id}`}
-              class="w-full block text-center px-6 py-4 rounded-xl bg-amber-500 text-white font-semibold hover:bg-amber-600"
-            >
-              {T.viewEdit[lang]}
-            </a>
-
             <a
               href={`https://wa.me/32489829468?text=${encodeURIComponent(
                 `Hola BelgoTours 👋

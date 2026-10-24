@@ -6,7 +6,7 @@ export const prerender = false;
 
 
 import { getTourBySlug, getTourSlugs } from "../../../lib/api.js";
-import { getTourCatalog, getRelatedTours } from "@/lib/tourCatalog";
+import { getTourCatalog, getRelatedTours, cityLabel as localizedCityLabel, type TourCity } from "@/lib/tourCatalog";
 import Layout from "@/layouts/Layout.astro";
 import Icon from "@/components/icons/Icon.astro";
 
@@ -431,7 +431,11 @@ const TOUR_LANGUAGE_LABELS: Record<string, string> = {
   fr: "Français",
 };
 const langLabel = tour.idioma ? (TOUR_LANGUAGE_LABELS[tour.idioma] || String(tour.idioma).toUpperCase()) : "";
-const cityLabel = tour.ciudad ? String(tour.ciudad).toUpperCase() : "";
+// WEB-01 — en EN, nombre localizado ("Brussels") en vez del enum de
+// Strapi en mayúsculas ("BRUSELAS"); resto de idiomas sin cambios.
+const cityLabel = tour.ciudad
+  ? ((lang === "en" && localizedCityLabel(tour.ciudad as TourCity, "en")) || String(tour.ciudad).toUpperCase())
+  : "";
 
 // Subtitle fallback (NO es heading)
 const heroSubtitleFallback: Record<
@@ -1071,7 +1075,9 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
 
         <!-- Tip -->
         <div class="mt-6 text-sm text-white/70">
-          Tip: llega al menos 10 minutos antes para empezar sin prisas.
+          {lang === "en"
+            ? "Tip: Please arrive at least 10 minutes before the tour starts."
+            : "Tip: llega al menos 10 minutos antes para empezar sin prisas."}
         </div>
 
       </div>
