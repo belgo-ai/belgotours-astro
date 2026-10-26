@@ -1,4 +1,4 @@
-exports.handler = async (event) => {
+export const handler = async (event) => {
   try {
     const q    = (event.queryStringParameters?.q    || "").trim();
     const type = (event.queryStringParameters?.type || "country").trim();
