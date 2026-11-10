@@ -3,6 +3,7 @@ export const prerender = false; // FIX DEFINITIVO
 
 import Layout from "../../layouts/Layout.astro";
 import { DateTime } from "luxon";
+import { getTourBySlug } from "../../lib/api.js";
 
 const { lang } = Astro.params;
 
@@ -88,6 +89,19 @@ const T = {
     it: "Arriva 10–15 minuti prima per trovare la guida con l’ombrello di BelgoTours.",
     fr: "Arrivez 10 à 15 minutes en avance pour trouver le guide avec le parapluie BelgoTours.",
   },
+  // FIX-01B C6 — sin punto de encuentro disponible: nunca uno por defecto
+  meetingPointFallback: {
+    es: "Consulta el punto de encuentro en tu email de confirmación.",
+    en: "Check the meeting point in your confirmation email.",
+    it: "Trovi il punto d'incontro nella tua email di conferma.",
+    fr: "Retrouvez le point de rendez-vous dans votre email de confirmation.",
+  },
+  meetingPointContact: {
+    es: "¿Dudas? Escríbenos por WhatsApp",
+    en: "Questions? Message us on WhatsApp",
+    it: "Domande? Scrivici su WhatsApp",
+    fr: "Une question ? Écrivez-nous sur WhatsApp",
+  },
 };
 
 // =============================
@@ -126,11 +140,56 @@ if (!reservaId) {
 }
 
 // =============================
-// Mapa Google
+// Punto de encuentro real del tour reservado (FIX-01 F5)
 // =============================
-const MAPA_PUNTO_ENCUENTRO =
-  import.meta.env.PUBLIC_MAPA_INICIO ||
-  "https://www.google.com/maps?q=Grand+Place+8+Bruxelles";
+// Antes: "Grand Place 8, 1000 Bruxelles" fijo para todos los tours,
+// también los de Brujas. Ahora se lee del tour reservado vía el mismo
+// endpoint público que usa su landing (/public/tour/:slug), con el slug
+// que ya devuelve /reservas/public/:id. Sin datos nuevos ni PII.
+const CITY_FOR_MAPS: Record<string, string> = {
+  bruselas: "Bruxelles",
+  brujas: "Brugge",
+};
+
+let puntoEncuentro = "";
+let mapsLink = "";
+let mapsEmbed = "";
+
+const textLang = (lang ?? "es") as "es" | "en" | "it" | "fr";
+const meetingPointLabel = T.meetingPoint[textLang] ?? T.meetingPoint.es;
+const meetingPointFallbackText = T.meetingPointFallback[textLang] ?? T.meetingPointFallback.es;
+const meetingPointContactText = T.meetingPointContact[textLang] ?? T.meetingPointContact.es;
+
+if (reserva?.tour?.slug) {
+  const tourLocale = ["es", "en", "it", "fr"].includes(reserva.idioma_tour)
+    ? reserva.idioma_tour
+    : lang;
+  try {
+    // FIX-01B C6: sin respuesta en 4 s → fallback neutro (no bloquea la página)
+    const tourData: any = await Promise.race([
+      getTourBySlug(reserva.tour.slug, tourLocale),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("timeout punto de encuentro")), 4000)
+      ),
+    ]);
+    const tourAttrs = tourData?.attributes ?? tourData;
+    puntoEncuentro = tourAttrs?.punto_encuentro || "";
+    const lat = tourAttrs?.coordenadas_lat;
+    const lng = tourAttrs?.coordenadas_lng;
+    if (lat && lng) {
+      // Coordenadas → chincheta en el punto, sin ficha de negocio destacada
+      mapsLink = `https://www.google.com/maps?q=${lat},${lng}`;
+      mapsEmbed = `https://www.google.com/maps?q=${lat},${lng}&z=17&output=embed`;
+    } else if (puntoEncuentro) {
+      const city = CITY_FOR_MAPS[reserva.tour.ciudad] || "";
+      const query = encodeURIComponent(city ? `${puntoEncuentro}, ${city}` : puntoEncuentro);
+      mapsLink = `https://www.google.com/maps/search/?api=1&query=${query}`;
+      mapsEmbed = `https://www.google.com/maps?q=${query}&output=embed`;
+    }
+  } catch (e) {
+    console.error("[booking-view] punto de encuentro no disponible", e);
+  }
+}
 ---
 
 <Layout lang={lang} noindex={true}>
@@ -157,33 +216,59 @@ const MAPA_PUNTO_ENCUENTRO =
             <p class="text-gray-600">{T.instructions[lang]}</p>
           </div>
 
-          <!-- MAPA -->
+          <!-- MAPA (sólo con el punto de encuentro real del tour) -->
+          {puntoEncuentro && (
           <div class="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden mb-8">
+            {mapsEmbed && (
             <iframe
-              src={`${MAPA_PUNTO_ENCUENTRO}&output=embed`}
+              src={mapsEmbed}
+              title={meetingPointLabel}
               class="w-full h-[360px]"
               loading="lazy"
             ></iframe>
+            )}
 
             <div class="p-5 border-t border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <p class="text-gray-900 font-semibold text-lg">
-                  Grand Place 8, 1000 Bruxelles
+                  {puntoEncuentro}
                 </p>
                 <p class="text-gray-600 text-sm">
                   {T.mapHint[lang]}
                 </p>
               </div>
 
+              {mapsLink && (
               <a
-                href={MAPA_PUNTO_ENCUENTRO}
+                href={mapsLink}
                 target="_blank"
                 class="px-5 py-3 rounded-xl bg-gray-900 text-white font-semibold hover:bg-gray-800 text-sm"
               >
                 {T.openMaps[lang]}
               </a>
+              )}
             </div>
           </div>
+          )}
+
+          {!puntoEncuentro && (
+          <div class="bg-white rounded-3xl shadow-lg border border-gray-200 mb-8 p-5">
+            <p class="text-gray-900 font-semibold text-lg">
+              {meetingPointLabel}
+            </p>
+            <p class="text-gray-600 text-sm mt-1">
+              {meetingPointFallbackText}
+            </p>
+            <a
+              href="https://wa.me/32489829468"
+              target="_blank"
+              rel="noopener"
+              class="inline-block mt-3 text-sm font-semibold text-green-700 underline underline-offset-2"
+            >
+              {meetingPointContactText}
+            </a>
+          </div>
+          )}
 
           <!-- RESUMEN -->
           <div class="bg-white rounded-3xl shadow-lg p-8 border border-gray-200 mb-10">
