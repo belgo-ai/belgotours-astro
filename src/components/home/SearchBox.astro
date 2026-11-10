@@ -136,7 +136,9 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
   // Orden: free primero
   const kindRank = k => k === "free" ? 0 : k === "special" ? 1 : 2;
 
-  function renderTours() {
+  // scrollToResults=false en la renderización inicial: la Home no debe
+  // desplazarse sola al cargar (FIX-01 F1); sólo tras una acción del usuario.
+  function renderTours(scrollToResults = true) {
     results.innerHTML = "";
     empty.classList.add("hidden");
     placeholder.classList.add("hidden");
@@ -191,9 +193,11 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
     });
 
     // Scroll suave a los tours
-    setTimeout(() => {
-      stepTours.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }, 100);
+    if (scrollToResults) {
+      setTimeout(() => {
+        stepTours.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 100);
+    }
   }
 
   // Ciudad
@@ -236,6 +240,6 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
   });
 
   // Init — si ya hay idioma preseleccionado renderizar
-  if (selectedLang) renderTours();
+  if (selectedLang) renderTours(false);
 })();
 </script>
