@@ -433,11 +433,17 @@ const currentLang =
     ? wrapper.dataset.lang
     : "es";
 
+// FIX-01 F4: fecha civil del tour ("YYYY-MM-DD"). new Date(dateStr) la
+// tomaba como medianoche UTC y en husos de América la etiqueta mostraba
+// el día anterior. Mediodía UTC formateado en Europe/Brussels = misma
+// fecha para cualquier visitante. Sólo etiqueta; la disponibilidad no cambia.
 function formatShortDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString(currentLang, {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return dateStr;
+  return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString(currentLang, {
     day: "2-digit",
     month: "short",
+    timeZone: BUSINESS_ZONE,
   });
 }
 

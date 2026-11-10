@@ -22,18 +22,45 @@ const phoneInput = document.getElementById("customerPhone") as HTMLInputElement 
 let iti: ReturnType<typeof intlTelInput> | null = null;
 let utilsReady = false;
 
+// FIX-01 F3 — país por defecto del prefijo: región del primer idioma del
+// navegador que la tenga (es-MX → mx, fr-BE → be). Sin región de país
+// (es, es-419) → país según el idioma del sitio. Sustituye a la
+// geolocalización por IP (ipapi.co), que sólo alimentaba este prefijo.
+const SITE_LANG_DEFAULT_COUNTRY: Record<string, string> = {
+  es: "es",
+  en: "gb",
+  fr: "fr",
+  it: "it",
+  pt: "pt",
+};
+
+function defaultPhoneCountry(siteLang: string): string {
+  const known = new Set(
+    (intlTelInput as any).getCountryData().map((c: any) => c.iso2)
+  );
+  const tags = navigator.languages?.length ? navigator.languages : [navigator.language];
+  for (const tag of tags) {
+    const region = String(tag || "")
+      .split("-")
+      .slice(1)
+      .find((part) => /^[a-z]{2}$/i.test(part));
+    if (region && known.has(region.toLowerCase())) return region.toLowerCase();
+  }
+  return SITE_LANG_DEFAULT_COUNTRY[siteLang] || "es";
+}
+
 if (phoneInput) {
   iti = intlTelInput(phoneInput, {
-  initialCountry: "auto",
-  separateDialCode: true,
+  initialCountry: defaultPhoneCountry(
+    root?.dataset.lang || document.documentElement.getAttribute("lang") || "es"
+  ),
+  // Prefijo dentro del propio campo (no separado): con separateDialCode,
+  // un "+" tecleado se descartaba (o abría el buscador de país) y "+32…"
+  // nunca cambiaba el país. Así la librería detecta el "+xx" al teclear,
+  // pegar o autocompletar. getNumber() sigue devolviendo E.164.
+  separateDialCode: false,
   autoPlaceholder: "polite",
   loadUtils: () => import("intl-tel-input/utils"),
-  geoIpLookup: (callback: (countryCode: string) => void) => {
-    fetch("https://ipapi.co/json")
-      .then((res) => res.json())
-      .then((data) => callback(data.country_code))
-      .catch(() => callback("es"));
-  }
 } as any);
 (iti as any).promise?.then(() => { utilsReady = true; });
 
@@ -47,7 +74,10 @@ if (phoneInput) {
     return;
   }
 
-  if (iti && !iti.isValidNumber()) {
+  // FIX-01B C1: vacío o sólo el prefijo → mensaje de campo obligatorio
+  if (phoneIsEmpty(phoneInput)) {
+    setFieldError(phoneInput);
+  } else if (iti && !iti.isValidNumber()) {
     errorEl?.classList.remove("hidden");
     phoneInput.classList.add("border-red-500", "ring-2", "ring-red-200");
   } else {
@@ -57,6 +87,20 @@ if (phoneInput) {
 });
 
 const refreshNav = () => (window as any).updateBookingNavigation?.();
+
+// El error se retira en cuanto el número es válido (sin mostrarlo al teclear)
+phoneInput.addEventListener("input", () => {
+  if (utilsReady && iti?.isValidNumber()) {
+    document.getElementById("phoneError")?.classList.add("hidden");
+    phoneInput.classList.remove("border-red-500", "ring-2", "ring-red-200");
+  }
+});
+phoneInput.addEventListener("countrychange", () => {
+  if (utilsReady && iti?.isValidNumber()) {
+    document.getElementById("phoneError")?.classList.add("hidden");
+    phoneInput.classList.remove("border-red-500", "ring-2", "ring-red-200");
+  }
+});
 
 phoneInput.addEventListener("input", refreshNav);
 phoneInput.addEventListener("keyup", refreshNav);
@@ -170,10 +214,12 @@ document.addEventListener("participantsUpdated", () => {
 });
 
 // 🔥 Limpiar errores visuales al escribir (solo una vez)
+// FIX-01 F3: el error se retira en cuanto el valor es válido, no al teclear
 bookingRoot.querySelectorAll("input, select, textarea").forEach((input) => {
   input.addEventListener("input", () => {
-    input.classList.remove("border-red-500", "ring-2", "ring-red-200");
-    input.removeAttribute("aria-invalid");
+    if (!isFieldValid(input as HTMLInputElement)) return;
+    clearFieldError(input as HTMLInputElement);
+    if (currentStep === 2 && validateStep2(false)) hideNavHint();
   });
 });
 
@@ -223,6 +269,8 @@ bookingErrorBackBtn?.addEventListener("click", () => {
   if (successView) successView.classList.add("hidden");
 
   currentStep = stepNumber;
+  updateStepper(stepNumber);
+  hideNavHint();
   updateNavigation();
 
   if (stepNumber === 2 || stepNumber === 3) {
@@ -270,12 +318,8 @@ bookingErrorBackBtn?.addEventListener("click", () => {
   element.classList.add("border-red-500", "ring-2", "ring-red-200");
   element.setAttribute("aria-invalid", "true");
 
-  element.scrollIntoView({
-    behavior: "smooth",
-    block: "center",
-  });
-
-  element.focus();
+  scrollIntoPanel(element);
+  element.focus({ preventScroll: true });
 
   element.animate(
     [
@@ -338,46 +382,201 @@ function validateStep1(showUI = false) {
 
 
 
-    function validateStep2(showUI = false) {
-  const requiredFields = [
-    "firstName",
-    "lastName",
-    "customerCity",
-    "customerCountry",
-    "customerPhone",
-    "customerEmail",
-    "customerEmailConfirm",
-  ];
+// ── FIX-01 F2/F3: stepper, errores por campo y aviso de navegación ──
+const BOOKING_UI_TEXT: Record<string, Record<string, string>> = {
+  es: {
+    required: "Este campo es obligatorio",
+    emailInvalid: "Introduce un correo válido",
+    reviewFields: "Revisa los campos marcados",
+    chooseDateTime: "Elige una fecha y un horario para continuar",
+    chooseTime: "Elige un horario para continuar",
+  },
+  en: {
+    required: "This field is required",
+    emailInvalid: "Please enter a valid email address",
+    reviewFields: "Please check the highlighted fields",
+    chooseDateTime: "Choose a date and a time to continue",
+    chooseTime: "Choose a time to continue",
+  },
+  it: {
+    required: "Questo campo è obbligatorio",
+    emailInvalid: "Inserisci un indirizzo email valido",
+    reviewFields: "Controlla i campi evidenziati",
+    chooseDateTime: "Scegli una data e un orario per continuare",
+    chooseTime: "Scegli un orario per continuare",
+  },
+  fr: {
+    required: "Ce champ est obligatoire",
+    emailInvalid: "Veuillez saisir une adresse email valide",
+    reviewFields: "Vérifiez les champs signalés",
+    chooseDateTime: "Choisissez une date et un horaire pour continuer",
+    chooseTime: "Choisissez un horaire pour continuer",
+  },
+  pt: {
+    required: "Este campo é obrigatório",
+    emailInvalid: "Introduza um email válido",
+    reviewFields: "Verifique os campos assinalados",
+    chooseDateTime: "Escolha uma data e um horário para continuar",
+    chooseTime: "Escolha um horário para continuar",
+  },
+};
 
-  
-  for (const id of requiredFields) {
-  const el = document.getElementById(id) as
-    | HTMLInputElement
-    | HTMLSelectElement
-    | null;
-
-  if (!el || !el.value.trim()) {
-    if (showUI) markFieldError(el);
-    return false;
-  }
+function uiText(key: string): string {
+  return (BOOKING_UI_TEXT[lang] || BOOKING_UI_TEXT.es)[key] || BOOKING_UI_TEXT.es[key];
 }
 
-  const email = emailInput?.value.trim();
- if (utilsReady && iti && phoneInput?.value?.trim() && !iti.isValidNumber()) {
-  if (showUI) markFieldError(phoneInput);
-  return false;
+const navHint = document.getElementById("bookingNavHint");
+
+function showNavHint(message: string) {
+  if (!navHint) return;
+  navHint.textContent = message;
+  navHint.classList.remove("hidden");
 }
-  const emailConfirm = emailConfirmInput?.value.trim();
 
-  if (email !== emailConfirm) {
-    if (emailMismatch) emailMismatch.classList.remove("hidden");
-    if (showUI) markFieldError(emailConfirmInput);
-    return false;
+function hideNavHint() {
+  navHint?.classList.add("hidden");
+}
+
+function updateStepper(stepNumber: number) {
+  bookingRoot
+    .querySelectorAll<HTMLElement>("[data-booking-step]")
+    .forEach((el) => {
+      const n = Number(el.dataset.bookingStep);
+      el.classList.remove("text-gray-900", "font-semibold", "text-gray-700", "text-gray-400");
+      if (n === stepNumber) {
+        el.classList.add("text-gray-900", "font-semibold");
+        el.setAttribute("aria-current", "step");
+      } else {
+        el.classList.add(n < stepNumber ? "text-gray-700" : "text-gray-400");
+        el.removeAttribute("aria-current");
+      }
+    });
+}
+
+// Coloca el campo cerca de la parte superior del panel: así no queda bajo
+// la barra fija de navegación ni bajo el teclado móvil (visualViewport).
+function scrollIntoPanel(el: HTMLElement) {
+  const panel = el.closest(".panel-content") as HTMLElement | null;
+  if (!panel) {
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
   }
+  const place = () => {
+    const offset = el.getBoundingClientRect().top
+      - panel.getBoundingClientRect().top
+      + panel.scrollTop - 96;
+    panel.scrollTo({ top: Math.max(0, offset), behavior: "smooth" });
+  };
+  place();
+  window.visualViewport?.addEventListener("resize", place, { once: true });
+}
 
-  if (emailMismatch) emailMismatch.classList.add("hidden");
+const STEP2_FIELDS = [
+  "firstName",
+  "lastName",
+  "customerCountry",
+  "customerCity",
+  "customerPhone",
+  "customerEmail",
+  "customerEmailConfirm",
+];
 
+// FIX-01B C1: con el prefijo dentro del campo, "+34" / "0034" sin más
+// dígitos cuenta como vacío (nunca se envía sólo el prefijo).
+function phoneIsEmpty(el: HTMLInputElement): boolean {
+  const digits = el.value.replace(/\D/g, "").replace(/^00/, "");
+  if (!digits) return true;
+  const hasIntlPrefix = /^\s*(\+|00)/.test(el.value);
+  const dialCode = iti?.getSelectedCountryData()?.dialCode;
+  return hasIntlPrefix && !!dialCode && digits === dialCode;
+}
+
+function isFieldValid(el: HTMLInputElement): boolean {
+  if (!STEP2_FIELDS.includes(el.id)) return true;
+  const value = el.value.trim();
+  if (!value) return false;
+  if (el.id === "customerPhone") {
+    if (phoneIsEmpty(el)) return false;
+    return !utilsReady || !iti || iti.isValidNumber() === true;
+  }
+  if (el.id === "customerEmail") return el.checkValidity();
+  if (el.id === "customerEmailConfirm") {
+    return el.checkValidity() && value === (emailInput?.value.trim() ?? "");
+  }
   return true;
+}
+
+// Mensaje genérico bajo el campo (obligatorio / email no válido)
+function genericErrorEl(el: HTMLInputElement): HTMLElement {
+  const id = `${el.id}FieldError`;
+  let msg = document.getElementById(id);
+  if (!msg) {
+    msg = document.createElement("p");
+    msg.id = id;
+    msg.className = "text-xs text-red-500 mt-1 hidden";
+    let anchor: HTMLElement = (el.closest(".iti") as HTMLElement) || el;
+    if (anchor.parentElement?.classList.contains("relative")) anchor = anchor.parentElement;
+    anchor.insertAdjacentElement("afterend", msg);
+  }
+  return msg;
+}
+
+function setFieldError(el: HTMLInputElement) {
+  const value = el.value.trim();
+  let msg: HTMLElement | null;
+  if (el.id === "customerPhone" && !phoneIsEmpty(el)) {
+    msg = document.getElementById("phoneError");
+  } else if (el.id === "customerEmailConfirm" && value && el.checkValidity()) {
+    msg = emailMismatch;
+  } else {
+    msg = genericErrorEl(el);
+    msg.textContent = value && el.type === "email" ? uiText("emailInvalid") : uiText("required");
+  }
+  // Un único mensaje visible por campo
+  const fieldMessages = [
+    document.getElementById(`${el.id}FieldError`),
+    el.id === "customerPhone" ? document.getElementById("phoneError") : null,
+    el.id === "customerEmailConfirm" ? emailMismatch : null,
+  ];
+  fieldMessages.forEach((m) => {
+    if (m && m !== msg) m.classList.add("hidden");
+  });
+  msg?.classList.remove("hidden");
+  if (!el.dataset.describedbyOriginal) {
+    el.dataset.describedbyOriginal = el.getAttribute("aria-describedby") || "";
+  }
+  if (msg) el.setAttribute("aria-describedby", msg.id);
+  el.classList.add("border-red-500", "ring-2", "ring-red-200");
+  el.setAttribute("aria-invalid", "true");
+}
+
+function clearFieldError(el: HTMLInputElement) {
+  el.classList.remove("border-red-500", "ring-2", "ring-red-200");
+  el.removeAttribute("aria-invalid");
+  document.getElementById(`${el.id}FieldError`)?.classList.add("hidden");
+  if (el.id === "customerPhone") document.getElementById("phoneError")?.classList.add("hidden");
+  if (el.id === "customerEmailConfirm") emailMismatch?.classList.add("hidden");
+  if (el.dataset.describedbyOriginal !== undefined) {
+    if (el.dataset.describedbyOriginal) {
+      el.setAttribute("aria-describedby", el.dataset.describedbyOriginal);
+    } else {
+      el.removeAttribute("aria-describedby");
+    }
+  }
+}
+
+    function validateStep2(showUI = false) {
+  const invalid = STEP2_FIELDS
+    .map((id) => getInput(id))
+    .filter((el): el is HTMLInputElement => !!el && !isFieldValid(el));
+
+  if (showUI && invalid.length) {
+    invalid.forEach(setFieldError);
+    showNavHint(uiText("reviewFields"));
+    markFieldError(invalid[0]);
+  }
+
+  return invalid.length === 0;
 }
 
     function validateStep3(showUI = false) {
@@ -394,13 +593,9 @@ function validateStep1(showUI = false) {
       if (!prevBtn || !nextBtn) return;
 
       prevBtn.disabled = currentStep === 1;
+      // FIX-01 F3: "Continuar" siempre habilitado; valida al pulsarlo y
+      // explica qué falta (antes quedaba deshabilitado sin motivo visible).
       nextBtn.disabled = false;
-
-      if (currentStep === 1) {
-        nextBtn.disabled = !validateStep1(false);
-      } else if (currentStep === 2) {
-        nextBtn.disabled = !validateStep2(false);
-      }
 
       if (currentStep === 3) {
         nextBtn.classList.add("hidden");
@@ -421,6 +616,23 @@ function validateStep1(showUI = false) {
     // 👇 AGREGA ESTO
       
 
+    // FIX-01 F4: "YYYY-MM-DD" es una fecha civil del tour. new Date(iso)
+    // la interpreta como medianoche UTC y en husos de América mostraba el
+    // día anterior. Se formatea a mediodía UTC en Europe/Brussels: misma
+    // fecha para cualquier zona horaria del visitante.
+    function formatTourDate(
+      iso: string,
+      locale: string,
+      options: Intl.DateTimeFormatOptions = {}
+    ): string {
+      const [y, m, d] = String(iso).split("-").map(Number);
+      if (!y || !m || !d) return String(iso);
+      return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString(locale, {
+        ...options,
+        timeZone: "Europe/Brussels",
+      });
+    }
+
     function updateSummary() {
       const localeMap = {
         es: "es-ES",
@@ -432,8 +644,7 @@ function validateStep1(showUI = false) {
 
       const state = window.bookingState || {};
       if (summaryDate && state.selectedDate) {
-        const date = new Date(state.selectedDate);
-        summaryDate.textContent = date.toLocaleDateString(locale, {
+        summaryDate.textContent = formatTourDate(state.selectedDate, locale, {
           day: "2-digit",
           month: "2-digit",
           year: "numeric",
@@ -455,8 +666,7 @@ function validateStep1(showUI = false) {
          const step2SummaryParticipants = document.getElementById("step2SummaryParticipants");
 
          if (step2SummaryDate && state.selectedDate) {
-         const date = new Date(state.selectedDate);
-         step2SummaryDate.textContent = date.toLocaleDateString(locale);
+         step2SummaryDate.textContent = formatTourDate(state.selectedDate, locale);
         }
 
         if (step2SummaryTime && state.selectedTime) {
@@ -477,6 +687,7 @@ window.addEventListener("dateSelected", () => {
 window.addEventListener("timeSelected", () => {
   updateSummary();
   updateNavigation();
+  if (currentStep === 1 && validateStep1(false)) hideNavHint();
 });
 
     document.addEventListener("participantsUpdated", () => {
@@ -522,9 +733,21 @@ step2Inputs.forEach((input) => {
   });
 });
 
-    emailInput?.addEventListener("input", () => validateStep2(false));
+    // FIX-01 F3: el desajuste de correos sólo se muestra al salir del campo
+    // de confirmación; se retira en cuanto ambos coinciden.
+    emailInput?.addEventListener("input", () => {
+      if (emailConfirmInput?.getAttribute("aria-invalid") === "true" && isFieldValid(emailConfirmInput)) {
+        clearFieldError(emailConfirmInput);
+      }
+    });
+    emailConfirmInput?.addEventListener("blur", () => {
+      const confirmValue = emailConfirmInput.value.trim();
+      const emailValue = emailInput?.value.trim();
+      if (confirmValue && emailValue && confirmValue !== emailValue) {
+        setFieldError(emailConfirmInput);
+      }
+    });
     emailConfirmInput?.addEventListener("input", () => {
-      validateStep2(false);
       updateNavigation();
     });
 
@@ -543,7 +766,13 @@ step2Inputs.forEach((input) => {
 
     nextBtn?.addEventListener("click", async () => {
       if (currentStep === 1) {
-        if (!validateStep1(true)) return;
+        if (!validateStep1(true)) {
+          // El calendario marca siempre una fecha (la primera, de forma
+          // automática); si ya hay horarios a la vista, lo que falta es la hora.
+          const hasTimesShown = !!bookingRoot.querySelector(".time-slot");
+          showNavHint(hasTimesShown ? uiText("chooseTime") : uiText("chooseDateTime"));
+          return;
+        }
         showStep(2);
         const state = window.bookingState || {};
         (window as any).BTAnalytics?.trackEvent("begin_checkout", {

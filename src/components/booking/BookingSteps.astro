@@ -47,6 +47,8 @@ const steps = [
 
     {steps.map((step) => (
       <span
+        data-booking-step={step.number}
+        aria-current={currentStep === step.number ? "step" : undefined}
         class={`transition-colors duration-200 ${
           currentStep === step.number
             ? "text-gray-900 font-semibold"

@@ -396,7 +396,6 @@ const STRAPI_API_BASE =
       autocomplete="tel"
       aria-describedby="phoneError"
       class="w-full p-3 border border-gray-300 rounded-xl focus:border-gray-900 focus:ring-2 focus:ring-yellow-300 focus:outline-none transition"
-      placeholder="+34 612 345 678"
     />
 
     <!-- Mensaje error teléfono -->
@@ -404,10 +403,11 @@ const STRAPI_API_BASE =
       id="phoneError"
       class="text-xs text-red-500 mt-1 hidden"
     >
-      {lang === "es" && "Introduce un número válido"}
-      {lang === "en" && "Please enter a valid phone number"}
-      {lang === "it" && "Inserisci un numero valido"}
-      {lang === "fr" && "Veuillez entrer un numéro valide"}
+      {lang === "es" && "Revisa el número o el prefijo del país"}
+      {lang === "en" && "Check the number or the country code"}
+      {lang === "it" && "Controlla il numero o il prefisso del paese"}
+      {lang === "fr" && "Vérifiez le numéro ou l’indicatif du pays"}
+      {lang === "pt" && "Verifique o número ou o indicativo do país"}
     </p>
   </div>
 </div>
@@ -454,6 +454,9 @@ const STRAPI_API_BASE =
       <p id="emailMismatch" class="text-xs text-red-500 mt-1 hidden">
         {lang === "es" && "Los correos no coinciden."}
         {lang === "en" && "Emails do not match."}
+        {lang === "it" && "Le email non corrispondono."}
+        {lang === "fr" && "Les adresses email ne correspondent pas."}
+        {lang === "pt" && "Os emails não coincidem."}
       </p>
     </div>
 
@@ -715,8 +718,15 @@ const STRAPI_API_BASE =
 <!-- NAVEGACIÓN -->
 <div
   id="bookingNav"
-  class="flex justify-between mt-4 pt-4 border-t border-gray-200"
+  class="flex flex-wrap gap-y-2 justify-between mt-4 pt-4 border-t border-gray-200"
 >
+  <!-- FIX-01 F3: motivo visible cuando "Continuar" no puede avanzar -->
+  <p
+    id="bookingNavHint"
+    class="hidden order-first w-full text-center text-sm font-medium text-red-600"
+    role="status"
+    aria-live="polite"
+  ></p>
   <button
     id="prevStep"
     type="button"
