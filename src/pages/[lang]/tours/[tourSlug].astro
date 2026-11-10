@@ -1312,8 +1312,9 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
   max-height: calc(100vh - 4.5rem);
   max-height: calc(100dvh - 4.5rem);
 
+  /* FIX-01 F6: + huella del banner de cookies (0 si no está visible) */
   padding-bottom:
-    calc(1rem + env(safe-area-inset-bottom));
+    calc(1rem + env(safe-area-inset-bottom) + var(--bt-cookie-offset, 0px));
 
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
@@ -1338,14 +1339,16 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
 ====================================================== */
 @media (min-width: 1024px) {
   .booking-panel {
-    top: 50%;
+    /* FIX-01 F6: con el banner de cookies visible, el modal se acorta y
+       sube lo que ocupa el banner para no quedar debajo de él */
+    top: calc(50% - var(--bt-cookie-offset, 0px) / 2);
     left: 50%;
     right: auto;
     bottom: auto;
 
     width: min(960px, 94vw);
     height: auto;
-    max-height: 85vh;
+    max-height: calc(85vh - var(--bt-cookie-offset, 0px));
 
     border-radius: 24px;
 
@@ -1357,8 +1360,8 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
   }
 
   .booking-panel .panel-content {
-    max-height: calc(85vh - 4.5rem);
-    max-height: calc(85dvh - 4.5rem);
+    max-height: calc(85vh - 4.5rem - var(--bt-cookie-offset, 0px));
+    max-height: calc(85dvh - 4.5rem - var(--bt-cookie-offset, 0px));
   }
 }
 

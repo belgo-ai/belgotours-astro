@@ -775,7 +775,8 @@ const STRAPI_API_BASE =
  @media (max-width: 768px) {
   #bookingNav {
     position: fixed;
-    bottom: 0;
+    /* FIX-01 F6: por encima del banner de cookies mientras está visible */
+    bottom: var(--bt-cookie-offset, 0px);
     left: 0;
     right: 0;
     background: white;
