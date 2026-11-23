@@ -10,7 +10,7 @@ import { getTourCatalog, getRelatedTours, cityLabel as localizedCityLabel, type 
 import Layout from "@/layouts/Layout.astro";
 import Icon from "@/components/icons/Icon.astro";
 
-import TourHeader from "../../../components/TourHeader.astro";
+import Header from "../../../components/Header.astro";
 import Footer from "../../../components/Footer.astro";
 
 import ReviewsPro from "@/components/reviews-pro/ReviewsPro.astro";
@@ -685,6 +685,15 @@ const relatedTours = relatedCatalogItems.map((t) => ({
   href: `/${lang}/tours/${t.slug}`,
   label: t.titulo,
 }));
+
+// A11Y-01 — nombre accesible del diálogo de reserva y del botón ✕.
+const dialogTexts: Record<string, { close: string }> = {
+  es: { close: "Cerrar" },
+  en: { close: "Close" },
+  it: { close: "Chiudi" },
+  fr: { close: "Fermer" },
+};
+const dialogText = dialogTexts[lang] ?? dialogTexts.es;
   ---
 
 <Layout
@@ -697,10 +706,10 @@ canonical={canonicalUrl}
 )}
 <script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema)} />
 
-<!-- 1) HEADER (global) -->
-<div slot="header">
-<TourHeader lang={lang} />
-</div>
+<!-- 1) HEADER (global) — A11Y-01: el mismo Header que Home/blog
+     (navegación, idioma y menú móvil); antes TourHeader solo tenía el logo.
+     Hijo directo del slot para que el sticky funcione. -->
+<Header slot="header" lang={lang} />
 
 <!-- 2) HERO (dinámico desde Strapi) -->
 <section 
@@ -1037,7 +1046,7 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
     btn.setAttribute("aria-expanded", String(!wasOpen));
     btn.textContent = (wasOpen ? btn.dataset.labelMore : btn.dataset.labelLess) ?? "";
     if (wasOpen) {
-      document.getElementById("itinerary-list")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      document.getElementById("itinerary-list")?.scrollIntoView({ behavior: (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"), block: "nearest" });
     }
   });
 })();
@@ -1156,6 +1165,7 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
          z-40 transition-all duration-300
          max-w-xl mx-auto md:max-w-none
          opacity-0 translate-y-6 pointer-events-none"
+  inert
 >
   <div
   class="bg-white/95 backdrop-blur-md
@@ -1192,17 +1202,23 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
 <!-- Booking Panel -->
 <aside
   id="bookingPanel"
+  role="dialog"
+  aria-modal="true"
+  aria-label={`${bookingMode === "request" ? ui.reservar : ui.verDisponibilidad} · ${tour.titulo}`}
+  tabindex="-1"
+  inert
   class="booking-panel fixed left-0 right-0 bottom-0 z-[80]
-         rounded-t-2xl shadow-2xl bg-white translate-y-full">
-  <div class="panel-grabber w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-3 mb-2"></div>
-
-  <div class="flex items-center justify-end px-4 py-3 border-b border-gray-200">
-  <button
-    type="button"
-    class="closeBookingBtn p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-    aria-label="Cerrar">
-    ✕
-  </button>
+         rounded-t-2xl shadow-2xl bg-gray-100 translate-y-full">
+  <!-- UX-03: tirador y cierre en una sola barra (3.5rem; antes ~5.7rem de
+       blanco vacío sobre el formulario) -->
+  <div class="panel-topbar relative flex items-center justify-end h-14 px-2 bg-white border-b border-gray-200 rounded-t-2xl lg:rounded-t-3xl">
+    <div class="panel-grabber absolute left-1/2 top-2 -translate-x-1/2 w-12 h-1.5 bg-gray-300 rounded-full lg:hidden" aria-hidden="true"></div>
+    <button
+      type="button"
+      class="closeBookingBtn w-11 h-11 flex items-center justify-center rounded-full text-gray-700 hover:bg-gray-100"
+      aria-label={dialogText.close}>
+      <Icon name="x" size={20} />
+    </button>
   </div>
 
   <div class="panel-content min-w-0 overflow-y-auto overflow-x-hidden p-4">
@@ -1298,6 +1314,12 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
   transform: translateY(0);
 }
 
+/* A11Y-01: el diálogo recibe el foco al abrirse (anuncia su nombre);
+   el anillo se reserva a los controles internos */
+.booking-panel:focus {
+  outline: none;
+}
+
 /* ======================================================
    PANEL CONTENT SCROLL (CRÍTICO)
 ====================================================== */
@@ -1309,8 +1331,8 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
   overflow-y: auto;
   overflow-x: hidden;
 
-  max-height: calc(100vh - 4.5rem);
-  max-height: calc(100dvh - 4.5rem);
+  max-height: calc(100vh - 3.5rem);
+  max-height: calc(100dvh - 3.5rem);
 
   /* FIX-01 F6: + huella del banner de cookies (0 si no está visible) */
   padding-bottom:
@@ -1360,8 +1382,8 @@ class="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semi
   }
 
   .booking-panel .panel-content {
-    max-height: calc(85vh - 4.5rem - var(--bt-cookie-offset, 0px));
-    max-height: calc(85dvh - 4.5rem - var(--bt-cookie-offset, 0px));
+    max-height: calc(85vh - 3.5rem - var(--bt-cookie-offset, 0px));
+    max-height: calc(85dvh - 3.5rem - var(--bt-cookie-offset, 0px));
   }
 }
 
@@ -1466,12 +1488,15 @@ if (typeof window !== "undefined") {
 
     if (!hero || !description || !footer || !widget) return;
 
+    // A11Y-01: oculto = inert (antes era invisible pero tabulable)
     const showSticky = () => {
+      widget.inert = false;
       widget.classList.remove("opacity-0", "translate-y-6", "pointer-events-none");
       aiButton?.classList.remove("opacity-0", "pointer-events-none");
     };
 
     const hideSticky = () => {
+      widget.inert = true;
       widget.classList.add("opacity-0", "translate-y-6", "pointer-events-none");
       aiButton?.classList.add("opacity-0", "pointer-events-none");
     };

@@ -8,6 +8,14 @@ if (!token) {
   throw new Error("Missing token");
 }
 
+// FIX-02a — los segmentos de las páginas propias del flujo nunca son
+// tokens (defensa en profundidad: las rutas estáticas ya tienen
+// prioridad). Sin POST /reviews/start y sin redirigir a error, que
+// podría volver aquí.
+if (["error", "formulario", "gracias"].includes(token)) {
+  return new Response(null, { status: 404 });
+}
+
 const API = import.meta.env.PUBLIC_STRAPI_URL;
 if (!API) {
   throw new Error("PUBLIC_STRAPI_URL is not defined");

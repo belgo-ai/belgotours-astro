@@ -24,6 +24,7 @@ const href = `https://wa.me/${PHONE}?text=${text}`;
 <a
   href={href}
   class="whatsapp-float"
+  data-float-yield
   target="_blank"
   rel="noopener"
   aria-label="WhatsApp BelgoTours"
@@ -45,7 +46,9 @@ const href = `https://wa.me/${PHONE}?text=${text}`;
 .whatsapp-float {
   position: fixed;
   right: 18px;
-  bottom: 18px;
+  /* UX-01 final: por encima del banner de cookies mientras está visible
+     (misma variable que el CTA fijo y el asistente IA) */
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px) + var(--bt-cookie-offset, 0px));
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -56,7 +59,7 @@ const href = `https://wa.me/${PHONE}?text=${text}`;
   justify-content: center;
   box-shadow: 0 12px 30px rgba(0,0,0,.35);
   z-index: 60;
-  transition: transform .2s ease, box-shadow .2s ease;
+  transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease, visibility .2s;
 }
 
 .whatsapp-float:hover {

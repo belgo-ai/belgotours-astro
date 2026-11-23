@@ -20,30 +20,40 @@ const TEXTS = {
     guides: "Guías",
     blog: "Blog",
     contact: "Contacto",
+    openMenu: "Abrir menú",
+    language: "Idioma",
   },
   en: {
     tours: "Tours",
     guides: "Guides",
     blog: "Blog",
     contact: "Contact",
+    openMenu: "Open menu",
+    language: "Language",
   },
   it: {
     tours: "Tour",
     guides: "Guide",
     blog: "Blog",
     contact: "Contatto",
+    openMenu: "Apri menu",
+    language: "Lingua",
   },
   fr: {
     tours: "Tours",
     guides: "Guides",
     blog: "Blog",
     contact: "Contact",
+    openMenu: "Ouvrir le menu",
+    language: "Langue",
   },
   pt: {
     tours: "Tours",
     guides: "Guias",
     blog: "Blog",
     contact: "Contato",
+    openMenu: "Abrir menu",
+    language: "Idioma",
   },
 };
 
@@ -64,15 +74,17 @@ const ENABLE_BLOG = false;
 
 ---
 
-<header class="relative z-50 w-full bg-brand-black text-white border-b border-white/10 backdrop-blur-lg">
-  <div class="container flex items-center justify-between py-4">
+<!-- A11Y-01: sticky (accesible durante el scroll). Debe ser hijo directo
+     del slot "header" de Layout o de <main> para que sticky funcione. -->
+<header id="siteHeader" class="sticky top-0 z-50 w-full bg-brand-black text-white border-b border-white/10 backdrop-blur-lg">
+  <div class="container flex items-center justify-between py-3 md:py-4">
 
     <!-- LOGO -->
     <a href={`/${lang}`} class="flex items-center gap-3">
       <img
         src="/Logo-belgotours.webp"
         alt="BelgoTours"
-        class="h-12 w-auto"
+        class="h-11 md:h-12 w-auto"
         loading="lazy"
       />
       <span class="text-lg font-semibold tracking-wide">BelgoTours</span>
@@ -109,6 +121,11 @@ const ENABLE_BLOG = false;
         <div class="relative hidden md:block">
           <button
             id="langGlobalBtn"
+            type="button"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-controls="langGlobalMenu"
+            aria-label={`${t.language}: ${lang.toUpperCase()}`}
             class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition"
           >
             <Icon name="globe" size={16} />
@@ -136,38 +153,45 @@ const ENABLE_BLOG = false;
       <!-- MENU MOBILE -->
       <button
         id="mobileMenuBtn"
-        class="md:hidden w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition"
-        aria-label="Menu"
+        type="button"
+        aria-expanded="false"
+        aria-controls="mobileMenu"
+        class="bt-menu-btn md:hidden w-11 h-11 flex items-center justify-center rounded-full transition"
+        aria-label={t.openMenu}
       >
-        <Icon name="menu" size={20} aria-hidden={false} aria-label="Menu" />
+        <span class="bt-menu-icon-open"><Icon name="menu" size={22} /></span>
+        <span class="bt-menu-icon-close"><Icon name="x" size={22} /></span>
       </button>
     </div>
   </div>
 
-  <!-- MOBILE MENU -->
+  <!-- MOBILE MENU — A11Y-01: panel anclado bajo el header sticky (se abre
+       en la posición de scroll actual, sin mover la página). Cerrado =
+       hidden: sus enlaces no entran en el orden de tabulación. -->
   <div
     id="mobileMenu"
-    class="md:hidden max-h-0 overflow-hidden transition-all duration-300 bg-brand-black/95 border-t border-white/10"
+    hidden
+    class="bt-mobile-menu md:hidden absolute left-0 right-0 top-full overflow-y-auto overscroll-contain bg-brand-black border-t border-white/10 shadow-2xl"
   >
-    <nav class="flex flex-col p-4 space-y-4 text-lg">
-      <a href={`/${lang}#tours`} class="hover:text-brand-yellow transition">
+    <nav class="flex flex-col p-4 space-y-1 text-lg">
+      <a href={`/${lang}#tours`} class="bt-menu-link">
         {t.tours}
       </a>
-      <a href={`/${lang}#guides`} class="hover:text-brand-yellow transition">
+      <a href={`/${lang}#guides`} class="bt-menu-link">
         {t.guides}
       </a>
       {ENABLE_BLOG && (
-       <a href={`/${lang}/blog`} class="hover:text-brand-yellow transition">
+       <a href={`/${lang}/blog`} class="bt-menu-link">
         {t.blog}
         </a>
            )}
       <a href="https://wa.me/32489829468"
            target="_blank"
-           rel="noopener" class="hover:text-brand-yellow transition">
+           rel="noopener" class="bt-menu-link">
         {t.contact}
       </a>
 
-      <hr class="border-white/10" />
+      <hr class="border-white/10 !my-3" />
 
       {showLanguageSelector && (
         <div class="flex flex-col space-y-2">
@@ -187,33 +211,158 @@ const ENABLE_BLOG = false;
   </div>
 </header>
 
+<style is:global>
+  /* A11Y-01 — altura real del header (la fija el script) para anclas y
+     para el alto máximo del menú móvil */
+  :root {
+    --bt-header-h: 5rem;
+  }
+  /* Destinos de ancla (#tours, #guides, #reviews, #faq-list…) por debajo
+     del header. No se usa scroll-padding-top en <html>: hace que Chrome
+     desplace la página al activar el botón del menú dentro del header
+     sticky. Excluye el panel de reserva (tiene su propio scroll). */
+  section[id]:not(#bookingPanel section),
+  #faq-list {
+    scroll-margin-top: calc(var(--bt-header-h) + 0.5rem);
+  }
+  .bt-mobile-menu {
+    max-height: calc(100vh - var(--bt-header-h));
+    max-height: calc(100dvh - var(--bt-header-h));
+  }
+  .bt-mobile-menu:not([hidden]) {
+    animation: btMenuIn 200ms ease-out;
+  }
+  @keyframes btMenuIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  /* Sólo en <html>: overflow en <body> lo convertiría en contenedor de
+     scroll y el header dejaría de ser sticky respecto al viewport */
+  html.bt-menu-open {
+    overflow: hidden;
+  }
+  /* UX-03 — botón de menú móvil visible sobre el header negro (contorno
+     claro, 44px) y en amarillo de marca mientras el menú está abierto */
+  .bt-menu-btn {
+    color: #fff;
+    background: rgba(255, 255, 255, .08);
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .35);
+  }
+  .bt-menu-btn:hover {
+    background: rgba(255, 255, 255, .16);
+  }
+  .bt-menu-btn[aria-expanded="true"] {
+    color: #0a0a0a;
+    background: #facc15;
+    box-shadow: none;
+  }
+  .bt-menu-btn:focus-visible {
+    outline: 3px solid #facc15;
+    outline-offset: 2px;
+  }
+  .bt-menu-btn .bt-menu-icon-close,
+  .bt-menu-btn[aria-expanded="true"] .bt-menu-icon-open {
+    display: none;
+  }
+  .bt-menu-btn[aria-expanded="true"] .bt-menu-icon-close {
+    display: inline-flex;
+  }
+  .bt-menu-btn .bt-menu-icon-open {
+    display: inline-flex;
+  }
+  .bt-menu-link {
+    display: block;
+    padding: 0.625rem 0.5rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    transition: color .15s, background-color .15s;
+  }
+  .bt-menu-link:hover {
+    color: #facc15;
+    background: rgba(255, 255, 255, .06);
+  }
+</style>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
+  const header = document.getElementById("siteHeader");
+
+  // Altura real del header → --bt-header-h (anclas, menú móvil)
+  if (header) {
+    const setHeaderHeight = () =>
+      document.documentElement.style.setProperty("--bt-header-h", `${header.offsetHeight}px`);
+    setHeaderHeight();
+    if ("ResizeObserver" in window) new ResizeObserver(setHeaderHeight).observe(header);
+  }
+
   const btn = document.getElementById("langGlobalBtn");
   const menu = document.getElementById("langGlobalMenu");
 
   if (btn && menu) {
+    const setLangOpen = (open: boolean) => {
+      menu.classList.toggle("opacity-0", !open);
+      menu.classList.toggle("invisible", !open);
+      menu.classList.toggle("translate-y-2", !open);
+      btn.setAttribute("aria-expanded", String(open));
+    };
+
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      menu.classList.toggle("opacity-0");
-      menu.classList.toggle("invisible");
-      menu.classList.toggle("translate-y-2");
+      setLangOpen(btn.getAttribute("aria-expanded") !== "true");
     });
 
-    document.addEventListener("click", () => {
-      menu.classList.add("opacity-0", "invisible", "translate-y-2");
+    document.addEventListener("click", () => setLangOpen(false));
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && btn.getAttribute("aria-expanded") === "true") {
+        setLangOpen(false);
+        btn.focus();
+      }
     });
   }
 
   const mobileBtn = document.getElementById("mobileMenuBtn");
   const mobileMenu = document.getElementById("mobileMenu");
 
-  if (mobileBtn && mobileMenu) {
-    mobileBtn.addEventListener("click", () => {
-      mobileMenu.style.maxHeight =
-        mobileMenu.style.maxHeight && mobileMenu.style.maxHeight !== "0px"
-          ? "0px"
-          : mobileMenu.scrollHeight + "px";
+  if (mobileBtn && mobileMenu && header) {
+    const isMenuOpen = () => !mobileMenu.hidden;
+
+    const setMenuOpen = (open: boolean, returnFocus = false) => {
+      mobileMenu.hidden = !open;
+      mobileBtn.setAttribute("aria-expanded", String(open));
+      // Bloqueo del scroll de fondo mientras el menú tapa el contenido
+      document.documentElement.classList.toggle("bt-menu-open", open);
+      if (!open && returnFocus) mobileBtn.focus();
+    };
+
+    mobileBtn.addEventListener("click", () => setMenuOpen(!isMenuOpen()));
+
+    // Escape cierra y devuelve el foco al botón
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && isMenuOpen()) {
+        setMenuOpen(false, true);
+      }
+    });
+
+    // Clic fuera del header, o un enlace del menú (anclas en la misma
+    // página), cierra el menú
+    document.addEventListener("click", (e) => {
+      if (isMenuOpen() && !header.contains(e.target as Node)) setMenuOpen(false);
+    });
+    mobileMenu.addEventListener("click", (e) => {
+      if ((e.target as HTMLElement).closest("a")) setMenuOpen(false);
+    });
+
+    // Si el foco sale del header (Tab tras el último enlace), el menú se
+    // cierra para no dejar foco detrás del panel
+    header.addEventListener("focusout", (e) => {
+      const next = e.relatedTarget as Node | null;
+      if (isMenuOpen() && next && !header.contains(next)) setMenuOpen(false);
+    });
+
+    // Al pasar a escritorio el menú móvil deja de existir
+    window.matchMedia("(min-width: 768px)").addEventListener("change", (mq) => {
+      if (mq.matches && isMenuOpen()) setMenuOpen(false);
     });
   }
 });

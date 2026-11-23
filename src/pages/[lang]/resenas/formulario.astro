@@ -111,6 +111,7 @@ const subRatings = [
       --gray-200: #e2e8f0;
       --gray-400: #94a3b8;
       --gray-500: #64748b;
+      --gray-600: #475569; /* A11Y-01: textos pequeños sobre gris claro */
       --gray-700: #334155;
       --star-empty: #cbd5e1;
       --star-fill: #facc15;
@@ -164,7 +165,7 @@ const subRatings = [
       margin-bottom: 0.5rem;
     }
     .subtitle {
-      color: var(--gray-500);
+      color: var(--gray-600);
       font-size: 0.9rem;
       line-height: 1.5;
     }
@@ -186,7 +187,7 @@ const subRatings = [
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: var(--gray-400);
+      color: var(--gray-500);
       margin-bottom: 1rem;
     }
 
@@ -196,7 +197,7 @@ const subRatings = [
       color: #fff;
       text-align: center;
     }
-    .rating-general-card .card-label { color: rgba(255,255,255,0.4); }
+    .rating-general-card .card-label { color: rgba(255,255,255,0.6); }
     .rating-general-card h2 {
       font-size: 1rem;
       font-weight: 600;
@@ -337,15 +338,15 @@ const subRatings = [
     }
     .char-hint {
       font-size: 0.72rem;
-      color: var(--gray-400);
+      color: var(--gray-500);
     }
     .char-count {
       font-size: 0.72rem;
       font-weight: 600;
-      color: var(--gray-400);
+      color: var(--gray-500);
       transition: color 0.2s;
     }
-    .char-count.ok { color: #22c55e; }
+    .char-count.ok { color: #15803d; }
 
     /* ── SUBMIT ── */
     .submit-card {
@@ -382,7 +383,7 @@ const subRatings = [
     .visibility-note {
       text-align: center;
       font-size: 0.72rem;
-      color: var(--gray-400);
+      color: var(--gray-600);
       margin-top: 0.75rem;
     }
   </style>
@@ -516,7 +517,7 @@ const subRatings = [
             }
             // Scroll suave a subratings
             setTimeout(() => {
-              cardSubratings?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              cardSubratings?.scrollIntoView({ behavior: (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"), block: 'nearest' });
             }, 200);
           } else {
             // Marcar subrating card como rated

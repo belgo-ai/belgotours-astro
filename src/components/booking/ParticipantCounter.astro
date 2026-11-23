@@ -15,10 +15,10 @@ interface Props {
 const { lang = "es", showMaxHint = true } = Astro.props as Props;
 ---
 
-<div id="participantCounter" class="participant-counter bg-gray-50 border border-gray-200 rounded-2xl p-5 space-y-5">
+<div id="participantCounter" class="participant-counter bg-white border border-gray-200 rounded-2xl p-5 space-y-5">
 
-  <!-- Título -->
-  <div class="flex items-center justify-between">
+  <!-- Título (UX-03: el aviso de máximo pasa debajo si no cabe) -->
+  <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
     <h3 class="font-semibold text-gray-900 text-base inline-flex items-center gap-1.5">
       <Icon name="users" />
       {lang === 'es' ? 'Participantes' :

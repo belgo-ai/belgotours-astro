@@ -45,9 +45,12 @@ const tBack: Record<string, string> = {
   it: "Torna a BelgoTours",
   fr: "Retour à BelgoTours",
 };
+
+// A11Y-01 — <title> de la pestaña (antes vacío)
+const pageTitle = `${tTitle[uiLang ?? "es"]} | BelgoTours`;
 ---
 
-<Layout lang={uiLang} noindex={true}>
+<Layout title={pageTitle} lang={uiLang} noindex={true}>
   <main class="min-h-screen bg-gray-50/80 py-10 px-4">
     <div class="max-w-xl mx-auto">
       <section class="bg-white rounded-3xl shadow-xl border border-gray-100 p-6 md:p-8 text-center">
@@ -69,7 +72,7 @@ const tBack: Record<string, string> = {
             href={WHATSAPP_URL}
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold transition"
+            class="inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-green-700 hover:bg-green-800 text-white font-semibold transition"
           >
             <Icon name="message-circle" size={18} />
             <span>{tWhatsapp[uiLang]}</span>

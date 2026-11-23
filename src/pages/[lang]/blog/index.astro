@@ -80,7 +80,7 @@ const posts = articles[safeLang] || articles.es;
                  loading="lazy" decoding="async" />
           </div>
           <div class="p-5">
-            <p class="text-xs text-neutral-400 mb-2">{new Date(post.date).toLocaleDateString(safeLang === 'en' ? 'en-GB' : safeLang === 'it' ? 'it-IT' : safeLang === 'fr' ? 'fr-FR' : 'es-ES', {day:'numeric',month:'long',year:'numeric'})}</p>
+            <p class="text-xs text-neutral-600 mb-2">{new Date(post.date).toLocaleDateString(safeLang === 'en' ? 'en-GB' : safeLang === 'it' ? 'it-IT' : safeLang === 'fr' ? 'fr-FR' : 'es-ES', {day:'numeric',month:'long',year:'numeric'})}</p>
             <h2 class="font-bold text-neutral-900 text-base mb-2 line-clamp-2 group-hover:text-yellow-600 transition-colors">{post.title}</h2>
             <p class="text-sm text-neutral-500 line-clamp-3">{post.excerpt}</p>
           </div>

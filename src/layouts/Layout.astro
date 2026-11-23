@@ -176,6 +176,11 @@ if (isHomePage) {
   {!isTourDetailPage && (
     <WhatsAppFloat lang={currentLang} />
   )}
+
+  <!-- UX-01 final: los flotantes de ayuda ceden ante controles -->
+  <script>
+    import "@/scripts/floatingYield.ts";
+  </script>
 </body>
 
 </html>

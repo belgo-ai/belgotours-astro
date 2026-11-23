@@ -1,4 +1,5 @@
 ---
+import Icon from "@/components/icons/Icon.astro";
 /**
  * BookingCalendar.astro — conectado a Strapi (SSR)
  * UI refinada BelgoTours · sin tocar lógica
@@ -291,7 +292,9 @@ const lastDate = fechasDisponibles[fechasDisponibles.length - 1] ?? firstDate;
   <div class="relative">
     <div
     id="quickDates"
-    class="flex gap-2 overflow-x-auto md:flex-wrap md:overflow-visible no-scrollbar scroll-smooth"
+    role="group"
+    aria-label={texts.selectDate}
+    class="flex gap-2 overflow-x-auto md:flex-wrap md:overflow-visible no-scrollbar scroll-smooth py-0.5"
     style="scroll-snap-type: x mandatory;"
   ></div>
     <div class="quick-dates-fade md:hidden" aria-hidden="true"></div>
@@ -305,9 +308,11 @@ const lastDate = fechasDisponibles[fechasDisponibles.length - 1] ?? firstDate;
   aria-controls="calendarPanel"
   data-label-open={texts.calendarOpenLabel}
   data-label-close={texts.calendarCloseLabel}
-  class="mt-2 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:border-yellow-400 hover:bg-yellow-50 transition"
+  class="cal-toggle mt-1 w-full flex items-center gap-2.5 px-4 py-3 rounded-xl border border-gray-300 bg-white text-sm font-semibold text-gray-900 hover:border-gray-500 transition"
 >
-    {texts.calendarOpenLabel}
+    <Icon name="calendar" size={18} />
+    <span data-cal-toggle-label class="flex-1 text-left">{texts.calendarOpenLabel}</span>
+    <svg class="cal-toggle-chevron w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
   </button>
 
   <!-- Calendario visual compacto: sólo se conocen como AVAILABLE las
@@ -316,7 +321,7 @@ const lastDate = fechasDisponibles[fechasDisponibles.length - 1] ?? firstDate;
        lo demás dentro del rango se marca UNAVAILABLE, nunca inventado -->
   <div
     id="calendarPanel"
-    class="hidden mt-3 border border-gray-200 rounded-2xl p-4 bg-white shadow-sm max-w-xs"
+    class="hidden mt-3 border border-gray-200 rounded-2xl p-4 bg-white shadow-sm w-full md:max-w-sm"
     role="group"
     aria-label={texts.selectDate}
   >
@@ -447,6 +452,16 @@ function formatShortDate(dateStr: string): string {
   });
 }
 
+// UX-03: día de la semana abreviado (misma regla de fecha civil)
+function formatWeekday(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return "";
+  return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString(currentLang, {
+    weekday: "short",
+    timeZone: BUSINESS_ZONE,
+  });
+}
+
 // Único cálculo de "qué fechas son realmente reservables" — usado
 // tanto por las quick dates como por el calendario visual, para que
 // ambos coincidan siempre (B09 Gate 8).
@@ -487,21 +502,31 @@ function selectDate(fecha: string, isInitial: boolean) {
   state.horarioId = null;
   (window as any).updateBookingNavigation?.();
 
+  // UX-03: el estado visual sale de aria-pressed (CSS .qd-tile)
   document
     .querySelectorAll("#quickDates button")
-    .forEach((el) => el.classList.remove("border-yellow-400", "bg-yellow-100"));
+    .forEach((el) => el.setAttribute("aria-pressed", "false"));
 
   const matchingQuickBtn = quickDatesContainer?.querySelector(
     `button[data-date="${fecha}"]`
   ) as HTMLElement | null;
 
   if (matchingQuickBtn) {
-    matchingQuickBtn.classList.add("border-yellow-400", "bg-yellow-100");
-    matchingQuickBtn.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
-    });
+    matchingQuickBtn.setAttribute("aria-pressed", "true");
+    // A11Y-01: desplazamiento horizontal sólo dentro de la fila de
+    // fechas. scrollIntoView sobre el botón (selección inicial, con el
+    // panel cerrado) fijaba ahí el punto de partida del Tab de Chrome
+    // y podía mover la página al cargar.
+    if (quickDatesContainer) {
+      quickDatesContainer.scrollTo({
+        left:
+          quickDatesContainer.scrollLeft +
+          (matchingQuickBtn.getBoundingClientRect().left -
+            quickDatesContainer.getBoundingClientRect().left) -
+          (quickDatesContainer.clientWidth - matchingQuickBtn.offsetWidth) / 2,
+        behavior: (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"),
+      });
+    }
   }
 
   renderCalendarGrid();
@@ -516,9 +541,9 @@ function selectDate(fecha: string, isInitial: boolean) {
         const offset = horariosEl.getBoundingClientRect().top
           - panel.getBoundingClientRect().top
           + panel.scrollTop - 20;
-        panel.scrollTo({ top: offset, behavior: "smooth" });
+        panel.scrollTo({ top: offset, behavior: (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth") });
       } else {
-        horariosEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        horariosEl.scrollIntoView({ behavior: (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"), block: "center" });
       }
     }, 500);
   }
@@ -552,7 +577,7 @@ function renderQuickDates() {
     quickDatesContainer.appendChild(emptyMsg);
 
     if (contenedor) {
-      contenedor.innerHTML = `<p class="text-sm text-gray-400">${noAvailabilityMsg}</p>`;
+      contenedor.innerHTML = `<p class="text-sm text-gray-500">${noAvailabilityMsg}</p>`;
     }
     toggleBtn?.classList.add("hidden");
     return;
@@ -566,12 +591,13 @@ function renderQuickDates() {
     const btn = document.createElement("button");
     btn.type = "button";
 
-    let label = formatShortDate(fecha);
+    const label = formatShortDate(fecha);
+    let topLabel = formatWeekday(fecha);
 const todayISO = brusselsTodayISO();
 const tomorrowISO = brusselsNow().plus({ days: 1 }).toISODate() as string;
 
 if (fecha === todayISO) {
-  label =
+  topLabel =
     currentLang === "en"
       ? "Today"
       : currentLang === "it"
@@ -580,7 +606,7 @@ if (fecha === todayISO) {
       ? "Aujourd’hui"
       : "Hoy";
 } else if (fecha === tomorrowISO) {
-  label =
+  topLabel =
     currentLang === "en"
       ? "Tomorrow"
       : currentLang === "it"
@@ -590,12 +616,18 @@ if (fecha === todayISO) {
       : "Mañana";
 }
 
-    btn.className =
-  "px-4 py-2 rounded-full border border-gray-300 text-sm bg-white hover:border-yellow-400 transition whitespace-nowrap flex-shrink-0";
+    btn.className = "qd-tile";
 btn.style.scrollSnapAlign = "start";
 btn.dataset.date = fecha;
+btn.setAttribute("aria-pressed", "false");
 
-    btn.textContent = label;
+    const top = document.createElement("span");
+    top.className = "qd-top";
+    top.textContent = topLabel;
+    const bottom = document.createElement("span");
+    bottom.className = "qd-date";
+    bottom.textContent = label;
+    btn.append(top, " ", bottom);
 
     btn.onclick = () => selectDate(fecha, !!btn.dataset.initial);
 
@@ -711,10 +743,10 @@ function renderCalendarGrid() {
     if (isToday) btn.setAttribute("aria-current", "date");
 
     const base =
-      "calendar-day relative h-9 w-full rounded-lg text-sm flex items-center justify-center transition";
+      "calendar-day relative h-10 w-full rounded-lg text-sm flex items-center justify-center transition";
 
     if (isSelected) {
-      btn.className = `${base} bg-yellow-400 text-gray-900 font-bold`;
+      btn.className = `${base} bg-gray-900 text-white font-bold`;
     } else if (isAvailable) {
       btn.className = `${base} bg-white text-gray-900 font-medium border border-gray-200 hover:border-yellow-400 hover:bg-yellow-50 cursor-pointer`;
     } else {
@@ -790,9 +822,10 @@ if (toggleBtn instanceof HTMLButtonElement) {
     const willOpen = calendarPanel?.classList.contains("hidden");
     calendarPanel?.classList.toggle("hidden");
     toggleBtn.setAttribute("aria-expanded", String(!!willOpen));
-    toggleBtn.textContent = willOpen
-      ? toggleBtn.dataset.labelClose ?? toggleBtn.textContent ?? ""
-      : toggleBtn.dataset.labelOpen ?? toggleBtn.textContent ?? "";
+    const labelEl = toggleBtn.querySelector("[data-cal-toggle-label]") ?? toggleBtn;
+    labelEl.textContent = willOpen
+      ? toggleBtn.dataset.labelClose ?? labelEl.textContent ?? ""
+      : toggleBtn.dataset.labelOpen ?? labelEl.textContent ?? "";
 
     if (willOpen) {
       let target = DateTime.fromISO(fechaPicker.value, {
@@ -934,19 +967,17 @@ function getUrgencyText(spots: number): string | null {
     const urgencyMessage = getUrgencyText(h.cupoDisponible);
 
     const urgencia = urgencyMessage
-      ? `<div class='text-xs text-yellow-600 mt-1'>${urgencyMessage}</div>`
+      ? `<div class='slot-urgency text-xs font-semibold text-amber-700 mt-1'>${urgencyMessage}</div>`
       : "";
 
+    btn.type = "button";
+    btn.setAttribute("aria-pressed", "false");
     btn.className = `
   time-slot
-  border border-gray-300
   rounded-xl
   p-4
   text-center
   bg-white
-  hover:border-yellow-400
-  hover:bg-yellow-50
-  transition
   cursor-pointer
   shadow-sm
 `;
@@ -962,7 +993,7 @@ function getUrgencyText(spots: number): string | null {
 
   ${urgencia}
 
-  <div class="text-xs text-gray-400 mt-2">
+  <div class="text-xs text-gray-500 mt-2">
     ${
       currentLang === "en"
         ? "Select"
@@ -977,10 +1008,10 @@ function getUrgencyText(spots: number): string | null {
 
     btn.onclick = () => {
       document.querySelectorAll(".time-slot").forEach((el) => {
-        el.classList.remove("border-yellow-400", "bg-yellow-100");
+        el.setAttribute("aria-pressed", "false");
       });
 
-      btn.classList.add("border-yellow-400", "bg-yellow-100");
+      btn.setAttribute("aria-pressed", "true");
 
       window.bookingState = window.bookingState || {};
       window.bookingState.selectedDate = h.fecha;
@@ -1013,9 +1044,9 @@ function getUrgencyText(spots: number): string | null {
     const offset = participantSection.getBoundingClientRect().top
       - panel.getBoundingClientRect().top
       + panel.scrollTop - 20;
-    panel.scrollTo({ top: offset, behavior: "smooth" });
+    panel.scrollTo({ top: offset, behavior: (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth") });
   } else {
-    participantSection.scrollIntoView({ behavior: "smooth", block: "center" });
+    participantSection.scrollIntoView({ behavior: (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"), block: "center" });
   }
 }, 350);
       
@@ -1088,17 +1119,89 @@ function getUrgencyText(spots: number): string | null {
 
 
 <style>
-.time-slot {
-  transition: transform .18s ease, box-shadow .18s ease;
+/* UX-03 — los botones de fecha y horario se crean por JS: estilos
+   globales. Seleccionado = negro de marca (aria-pressed); el amarillo
+   queda para la acción principal (Continuar). */
+:global(.time-slot) {
+  border: 2px solid #e5e7eb;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease;
 }
 
-.time-slot:hover {
+:global(.time-slot:hover) {
+  border-color: #9ca3af;
   transform: translateY(-2px);
   box-shadow: 0 8px 18px rgba(0,0,0,.08);
 }
 
-.time-slot:active {
+:global(.time-slot:active) {
   transform: scale(0.97);
+}
+
+:global(.time-slot[aria-pressed="true"]) {
+  border-color: #111827;
+  background: #111827;
+}
+
+:global(.time-slot[aria-pressed="true"] *) {
+  color: #fff;
+}
+
+:global(.time-slot[aria-pressed="true"] .slot-urgency) {
+  color: #fde047;
+}
+
+:global(.qd-tile) {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 2px solid #e5e7eb;
+  background: #fff;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: border-color .15s, background-color .15s;
+}
+
+:global(.qd-tile:hover) {
+  border-color: #9ca3af;
+}
+
+:global(.qd-tile .qd-top) {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: capitalize;
+}
+
+:global(.qd-tile .qd-date) {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+:global(.qd-tile[aria-pressed="true"]) {
+  border-color: #111827;
+  background: #111827;
+}
+
+:global(.qd-tile[aria-pressed="true"] .qd-top),
+:global(.qd-tile[aria-pressed="true"] .qd-date) {
+  color: #fff;
+}
+
+:global(.qd-tile:focus-visible),
+:global(.time-slot:focus-visible),
+.cal-toggle:focus-visible {
+  outline: 3px solid #facc15;
+  outline-offset: 2px;
+}
+
+.cal-toggle[aria-expanded="true"] .cal-toggle-chevron {
+  transform: rotate(180deg);
 }
 
 .no-scrollbar::-webkit-scrollbar {

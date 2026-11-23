@@ -43,11 +43,14 @@ const ALL_CITIES = ["brussels", "bruges", "antwerp", "leuven"] as const;
 const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as string | null;
 ---
 
-<div class="max-w-2xl mx-auto bg-white rounded-3xl border border-neutral-200 shadow-xl overflow-hidden mt-6 lg:mt-10 relative z-[70]">
+<!-- UX-03: z-10 (antes z-[70]): por encima del hero, pero por debajo del
+     header sticky (z-50) y su menú móvil, que esta tarjeta tapaba -->
+<div class="sb-card-root max-w-2xl mx-auto bg-white rounded-3xl ring-1 ring-black/5 shadow-2xl overflow-hidden lg:mt-10 relative z-10">
 
   <!-- PASO 1: CIUDAD -->
-  <div id="sb-step-city" class="p-6 border-b border-neutral-100">
-    <div class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">
+  <div id="sb-step-city" class="p-5 sm:p-6 border-b border-neutral-100">
+    <div class="sb-step-title">
+      <span class="sb-step-num" aria-hidden="true">1</span>
       {t.cityLabel}
     </div>
     <div class="grid grid-cols-2 gap-2" id="sb-cities">
@@ -56,19 +59,16 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
           type="button"
           data-city={city}
           aria-pressed={city === "brussels" ? "true" : "false"}
-          class:list={[
-            "city-btn text-left px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all duration-150",
-            city === "brussels" ? "border-yellow-400 bg-yellow-50 text-neutral-900" : "border-neutral-200 bg-white text-neutral-700",
-            "hover:border-yellow-300 hover:bg-yellow-50 cursor-pointer"
-          ]}
+          class="city-btn sb-choice text-left px-4 py-3 rounded-xl text-sm font-semibold cursor-pointer"
         >
-          {t.cities[city]}
+          <span>{t.cities[city]}</span>
+          <svg class="sb-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M4 12.5l5.5 5.5L20 7"/></svg>
         </button>
       ))}
     </div>
     <!-- Ciudades futuras: agrupadas, secundarias — no ocupan el mismo
          peso visual que las reservables (B09 Home Discovery UX) -->
-    <div class="mt-2 text-xs text-neutral-400 flex flex-wrap gap-x-1.5">
+    <div class="mt-2 text-xs text-neutral-500 flex flex-wrap gap-x-1.5">
       <span>{t.comingSoonLabel}</span>
       <span>{t.cities.antwerp}</span>
       <span aria-hidden="true">·</span>
@@ -77,8 +77,9 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
   </div>
 
   <!-- PASO 2: IDIOMA -->
-  <div id="sb-step-lang" class="p-6 border-b border-neutral-100">
-    <div class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">
+  <div id="sb-step-lang" class="p-5 sm:p-6 border-b border-neutral-100">
+    <div class="sb-step-title">
+      <span class="sb-step-num" aria-hidden="true">2</span>
       {t.langLabel}
     </div>
     <div class="flex gap-2 flex-wrap" id="sb-langs">
@@ -87,12 +88,7 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
           type="button"
           data-lang={code}
           aria-pressed={code === defaultLang ? "true" : "false"}
-          class:list={[
-            "lang-btn flex items-center gap-1.5 pl-2 pr-3 py-2 rounded-full border-2 text-sm font-medium transition-all duration-150",
-            code === defaultLang
-              ? "border-yellow-400 ring-2 ring-yellow-300 bg-yellow-50 text-neutral-900"
-              : "border-neutral-200 text-neutral-700 hover:border-yellow-300 hover:bg-yellow-50"
-          ]}
+          class="lang-btn sb-choice flex items-center gap-1.5 pl-2 pr-3 py-2 rounded-full text-sm font-semibold"
         >
           <span class="text-xl" aria-hidden="true">{LANG_META[code].flag}</span>
           <span>{LANG_META[code].label}</span>
@@ -102,17 +98,18 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
   </div>
 
   <!-- PASO 3: TOURS (sin botón intermedio) -->
-  <div id="sb-step-tours" class="p-6">
-    <div class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">
+  <div id="sb-step-tours" class="p-5 sm:p-6 bg-neutral-100/80 border-t border-neutral-200">
+    <div class="sb-step-title">
+      <span class="sb-step-num" aria-hidden="true">3</span>
       {t.toursLabel}
     </div>
-    <div id="sb-results" class="flex flex-col gap-2">
+    <div id="sb-results" class="flex flex-col gap-3">
       <!-- inyectado por JS -->
     </div>
-    <div id="sb-empty" class="hidden text-sm text-neutral-400 text-center py-4">
+    <div id="sb-empty" class="hidden text-sm text-neutral-500 text-center py-4">
       {t.noTours}
     </div>
-    <div id="sb-placeholder" class="text-sm text-neutral-300 text-center py-4 italic">
+    <div id="sb-placeholder" class="text-sm text-neutral-500 text-center py-4 italic">
       ↑ Selecciona un idioma para ver los tours
     </div>
   </div>
@@ -160,33 +157,35 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
     filtered.forEach(tour => {
       const card = document.createElement("a");
       card.href = tour.url;
-      card.className = "flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl border-2 border-neutral-200 bg-white hover:border-yellow-400 hover:bg-yellow-50 transition-all duration-150 group cursor-pointer no-underline";
+      card.className = "sb-tour-card group flex items-center gap-3 p-4 rounded-2xl border border-neutral-200 bg-white shadow-sm no-underline";
 
       const kindLabel = t.kinds?.[tour.kind] || tour.kind;
+      // Tipo de tour reconocible de un vistazo: free = amarillo de marca,
+      // privado = negro de marca, especial = naranja
       const kindColor = tour.kind === "free"
-        ? "bg-yellow-100 text-yellow-800"
+        ? "bg-yellow-400 text-neutral-900"
         : tour.kind === "private"
-        ? "bg-neutral-100 text-neutral-700"
-        : "bg-orange-100 text-orange-800";
+        ? "bg-neutral-900 text-white"
+        : "bg-orange-100 text-orange-900";
 
       const priceText = tour.kind === "free"
-        ? `<span class="text-green-600 font-semibold text-sm">${t.free}</span>`
-        : `<span class="font-semibold text-neutral-900 text-sm">${tour.price}</span>`;
+        ? `<span class="text-green-700 font-bold">${t.free}</span>`
+        : `<span class="font-bold text-neutral-900">${tour.price}</span>`;
 
       card.innerHTML = `
         <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 mb-1">
-            <span class="text-xs font-bold px-2 py-0.5 rounded-full ${kindColor}">${kindLabel}</span>
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1.5">
+            <span class="text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md ${kindColor}">${kindLabel}</span>
+            <span class="text-xs text-neutral-600">${tour.duration}</span>
           </div>
-          <div class="font-semibold text-neutral-900 text-sm leading-tight">${tour.name}</div>
-          <div class="text-xs text-neutral-400 mt-0.5">${tour.duration}</div>
+          <div class="font-bold text-neutral-900 text-[15px] leading-snug">${tour.name}</div>
+          <div class="mt-1.5 text-sm">${priceText}</div>
         </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
-          ${priceText}
-          <svg class="w-4 h-4 text-neutral-300 group-hover:text-yellow-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <span class="sb-tour-go flex-shrink-0 w-10 h-10 rounded-full bg-yellow-400 text-neutral-900 flex items-center justify-center" aria-hidden="true">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path d="M9 18l6-6-6-6"/>
           </svg>
-        </div>
+        </span>
       `;
 
       results.appendChild(card);
@@ -195,7 +194,7 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
     // Scroll suave a los tours
     if (scrollToResults) {
       setTimeout(() => {
-        stepTours.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        stepTours.scrollIntoView({ behavior: (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"), block: "nearest" });
       }, 100);
     }
   }
@@ -205,19 +204,13 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
     btn.addEventListener("click", () => {
       selectedCity = btn.dataset.city;
 
-      cityBtns.forEach(b => {
-        b.classList.remove("border-yellow-400", "bg-yellow-50", "text-neutral-900");
-        b.classList.add("border-neutral-200", "bg-white", "text-neutral-700");
-        b.setAttribute("aria-pressed", "false");
-      });
-      btn.classList.add("border-yellow-400", "bg-yellow-50", "text-neutral-900");
-      btn.classList.remove("border-neutral-200", "bg-white", "text-neutral-700");
+      cityBtns.forEach(b => b.setAttribute("aria-pressed", "false"));
       btn.setAttribute("aria-pressed", "true");
 
       renderTours();
 
       // Scroll al selector de idioma
-      document.getElementById("sb-step-lang")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      document.getElementById("sb-step-lang")?.scrollIntoView({ behavior: (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"), block: "nearest" });
     });
   });
 
@@ -226,13 +219,7 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
     btn.addEventListener("click", () => {
       selectedLang = btn.dataset.lang;
 
-      langBtns.forEach(b => {
-        b.classList.remove("border-yellow-400", "ring-2", "ring-yellow-300", "bg-yellow-50", "text-neutral-900");
-        b.classList.add("border-neutral-200", "text-neutral-700");
-        b.setAttribute("aria-pressed", "false");
-      });
-      btn.classList.add("border-yellow-400", "ring-2", "ring-yellow-300", "bg-yellow-50", "text-neutral-900");
-      btn.classList.remove("border-neutral-200", "text-neutral-700");
+      langBtns.forEach(b => b.setAttribute("aria-pressed", "false"));
       btn.setAttribute("aria-pressed", "true");
 
       renderTours();
@@ -243,3 +230,75 @@ const defaultLang = (["es","en","it","fr"].includes(lang) ? lang : null) as stri
   if (selectedLang) renderTours(false);
 })();
 </script>
+
+<style>
+  /* UX-03 — pasos numerados: mismo color de etiqueta (neutral-700) */
+  .sb-step-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #404040;
+  }
+  .sb-step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.375rem;
+    height: 1.375rem;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background: #0a0a0a;
+    color: #facc15;
+    font-size: 0.6875rem;
+    letter-spacing: 0;
+  }
+  /* Selección (ciudad / idioma): negro de marca = elegido; el amarillo
+     queda para la acción (flecha de cada tour) */
+  .sb-choice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.375rem;
+    border: 2px solid #d4d4d4;
+    background: #fff;
+    color: #262626;
+    transition: border-color .15s, background-color .15s, color .15s;
+  }
+  .sb-choice:hover {
+    border-color: #a3a3a3;
+  }
+  .sb-choice[aria-pressed="true"] {
+    border-color: #0a0a0a;
+    background: #0a0a0a;
+    color: #fff;
+  }
+  .sb-check {
+    width: 1rem;
+    height: 1rem;
+    color: #facc15;
+    display: none;
+  }
+  .sb-choice[aria-pressed="true"] .sb-check {
+    display: block;
+  }
+  .sb-choice:focus-visible,
+  :global(.sb-tour-card:focus-visible) {
+    outline: 3px solid #facc15;
+    outline-offset: 2px;
+  }
+  :global(.sb-tour-card) {
+    transition: border-color .15s, box-shadow .15s, transform .15s;
+  }
+  :global(.sb-tour-card:hover) {
+    border-color: #facc15;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, .08);
+  }
+  :global(.sb-tour-card:active) {
+    transform: scale(.99);
+  }
+</style>

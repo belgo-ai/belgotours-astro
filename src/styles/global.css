@@ -305,3 +305,29 @@ input[type="date"]:focus {
     background: var(--bg-page);
   }
 }
+
+/* A11Y-01 — prefers-reduced-motion: sin desplazamientos suaves ni
+   animaciones/transiciones propias para quien lo pide en su sistema.
+   El resto de usuarios conserva todas las transiciones. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* UX-01 final — flotante de ayuda cediendo ante un control que tiene
+   debajo (src/scripts/floatingYield.ts) */
+.bt-float-yield {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

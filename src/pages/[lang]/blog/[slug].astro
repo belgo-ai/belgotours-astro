@@ -220,10 +220,10 @@ const articleSchema = {
     <!-- Header del artículo -->
     <div class="mb-8">
       <a href={`/${safeLang}/blog`}
-         class="text-sm text-neutral-400 hover:text-neutral-600 transition mb-4 inline-block">
+         class="text-sm text-neutral-600 hover:text-neutral-900 transition mb-4 inline-block">
         ← {safeLang === 'es' ? 'Volver al blog' : safeLang === 'en' ? 'Back to blog' : safeLang === 'it' ? 'Torna al blog' : safeLang === 'fr' ? 'Retour au blog' : 'Voltar ao blog'}
       </a>
-      <p class="text-sm text-neutral-400 mb-3">
+      <p class="text-sm text-neutral-600 mb-3">
         {new Date(article.date).toLocaleDateString(safeLang === 'en' ? 'en-GB' : safeLang === 'it' ? 'it-IT' : safeLang === 'fr' ? 'fr-FR' : 'es-ES', {day:'numeric',month:'long',year:'numeric'})}
       </p>
       <h1 class="text-3xl md:text-4xl font-bold text-neutral-900 mb-4">{article.title}</h1>

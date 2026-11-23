@@ -192,7 +192,7 @@ if (reserva?.tour?.slug) {
 }
 ---
 
-<Layout lang={lang} noindex={true}>
+<Layout title={`${error ?? T.pageTitle[textLang] ?? T.pageTitle.es} | BelgoTours`} lang={lang} noindex={true}>
   <main class="min-h-screen bg-gray-50 py-10 px-4">
     <div class="max-w-5xl mx-auto">
 
@@ -307,7 +307,7 @@ if (reserva?.tour?.slug) {
                   Participantes: ${reserva.adultos} adultos, ${reserva.ninos} niños`
                   )}`}
               target="_blank"
-              class="w-full block text-center px-6 py-4 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700"
+              class="w-full block text-center px-6 py-4 rounded-xl bg-green-700 text-white font-semibold hover:bg-green-800"
             >
               {T.whatsapp[lang]}
             </a>

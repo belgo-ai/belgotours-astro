@@ -191,17 +191,10 @@ const STRAPI_API_BASE =
   {lang === "it" && "Seleziona data e orario"}
   {lang === "fr" && "Choisissez date et horaire"}
 </h3>
+    {/* UX-01 final: el aviso del free tour sobre el email se movió junto
+        al campo de email (paso 2); aquí sólo quedan los de privado/especial */}
+    {(isPrivateTour || isSpecialTour) && (
     <p class="text-xs text-gray-500">
-  {isFreeTour && (
-    lang === "es"
-      ? "Solo para enviarte la confirmación y detalles del tour."
-      : lang === "en"
-      ? "Only to send your booking confirmation and details."
-      : lang === "it"
-      ? "Solo per inviarti conferma e dettagli del tour."
-      : "Uniquement pour envoyer la confirmation du tour."
-  )}
-
   {isPrivateTour && (
     lang === "es"
       ? "Te contactaremos para definir fecha y precio."
@@ -222,6 +215,7 @@ const STRAPI_API_BASE =
       : "Confirmation immédiate par email."
   )}
 </p>
+    )}
 
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -275,12 +269,8 @@ const STRAPI_API_BASE =
   </div>
 </div>
 
-    <p class="text-xs text-gray-500">
-    {lang === "es" && "Solo usaremos tus datos para enviarte la confirmación del tour."}
-    {lang === "en" && "We’ll only use your data to send your tour confirmation."}
-    {lang === "it" && "Useremo i tuoi dati solo per inviarti la conferma del tour."}
-    {lang === "fr" && "Nous utiliserons vos données uniquement pour vous envoyer la confirmation."}
-   </p>
+    {/* UX-01B: la intro "Solo usaremos tus datos…" se retiró; repetía la
+        ayuda del campo de email, que queda como única explicación */}
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <!-- Nombre -->
@@ -401,7 +391,7 @@ const STRAPI_API_BASE =
     <!-- Mensaje error teléfono -->
     <p
       id="phoneError"
-      class="text-xs text-red-500 mt-1 hidden"
+      class="text-xs text-red-700 mt-1 hidden"
     >
       {lang === "es" && "Revisa el número o el prefijo del país"}
       {lang === "en" && "Check the number or the country code"}
@@ -429,7 +419,19 @@ const STRAPI_API_BASE =
         inputmode="email"
         class="w-full p-2.5 border border-gray-300 rounded-xl focus:border-gray-900 focus:ring-2 focus:ring-yellow-300 focus:outline-none transition placeholder-gray-400"
         placeholder="email@ejemplo.com"
+        aria-describedby="customerEmailHelp"
       />
+      {/* Única explicación del uso de los datos en el paso 2 (UX-01B):
+          para todos los tours con reserva directa */}
+      <p id="customerEmailHelp" class="text-xs text-gray-500 mt-1">
+        {lang === "es"
+          ? "Solo para enviarte la confirmación y detalles del tour."
+          : lang === "en"
+          ? "Only to send your booking confirmation and details."
+          : lang === "it"
+          ? "Solo per inviarti conferma e dettagli del tour."
+          : "Uniquement pour envoyer la confirmation du tour."}
+      </p>
     </div>
 
     <!-- Confirmar Email -->
@@ -451,7 +453,7 @@ const STRAPI_API_BASE =
         class="w-full p-2.5 border border-gray-300 rounded-xl focus:border-gray-900 focus:ring-2 focus:ring-yellow-300 focus:outline-none transition placeholder-gray-400"
         placeholder={lang === "es" ? "Repite tu correo" : "Repeat your email"}
       />
-      <p id="emailMismatch" class="text-xs text-red-500 mt-1 hidden">
+      <p id="emailMismatch" class="text-xs text-red-700 mt-1 hidden">
         {lang === "es" && "Los correos no coinciden."}
         {lang === "en" && "Emails do not match."}
         {lang === "it" && "Le email non corrispondono."}
@@ -472,9 +474,9 @@ const STRAPI_API_BASE =
         type="checkbox"
         class="mt-1 accent-gray-900"
       />
-      <span class="text-sm text-gray-700">
+      <label for="marketingConsent" class="text-sm text-gray-700 cursor-pointer">
         {marketingTextByLang[lang] || marketingTextByLang.es}
-      </span>
+      </label>
     </div>
   </div>
 </div>
@@ -730,7 +732,7 @@ const STRAPI_API_BASE =
   <button
     id="prevStep"
     type="button"
-    class="px-4 py-3 text-gray-400 hover:text-gray-600 font-medium rounded-xl transition disabled:opacity-30 disabled:cursor-not-allowed text-sm"
+    class="px-4 py-3 text-gray-600 hover:text-gray-900 font-medium rounded-xl transition disabled:opacity-30 disabled:cursor-not-allowed text-sm"
     disabled
   >
     {lang === "es" && "← Volver"}
@@ -739,6 +741,16 @@ const STRAPI_API_BASE =
     {lang === "fr" && "← Retour"}
     {!["es", "en", "it", "fr"].includes(lang) && "← Back"}
   </button>
+
+  <!-- UX-01 final: resumen de la selección (paso 1), derivado de
+       window.bookingState en updateNavigation(); ocupa el sitio de
+       "Volver", que en el paso 1 no tiene uso -->
+  <p
+    id="bookingNavSummary"
+    class="hidden flex-1 min-w-0 pr-3 self-center leading-tight"
+    aria-live="polite"
+    aria-atomic="true"
+  ></p>
 
   <!-- SIGUIENTE (FLUJO) -->
   <button

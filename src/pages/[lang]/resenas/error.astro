@@ -1,0 +1,71 @@
+---
+export const prerender = false;
+
+// FIX-02a — destino real de los enlaces de reseña no válidos. Antes,
+// [token].astro redirigía aquí sin que existiera la página: la ruta
+// dinámica recibía "error" como token, volvía a validar, fallaba y
+// redirigía de nuevo (bucle ERR_TOO_MANY_REDIRECTS). Esta ruta estática
+// tiene prioridad sobre [token]. No lee ni muestra el token ni ?reason=,
+// no consulta Strapi y no redirige.
+
+import Layout from "../../../layouts/Layout.astro";
+
+const { lang } = Astro.params;
+const uiLang = ["es", "en", "it", "fr"].includes(lang ?? "") ? (lang as string) : "es";
+
+const texts: Record<string, { title: string; message: string; secondary: string; back: string }> = {
+  es: {
+    title: "Este enlace de reseña no es válido",
+    message: "El enlace no es válido, ha caducado o ya se ha utilizado.",
+    secondary: "Si ya enviaste tu reseña, ¡muchas gracias! No necesitas hacer nada más.",
+    back: "Volver a BelgoTours",
+  },
+  en: {
+    title: "This review link is not valid",
+    message: "The link is not valid, has expired or has already been used.",
+    secondary: "If you have already sent your review, thank you! There is nothing else you need to do.",
+    back: "Back to BelgoTours",
+  },
+  it: {
+    title: "Questo link per la recensione non è valido",
+    message: "Il link non è valido, è scaduto o è già stato utilizzato.",
+    secondary: "Se hai già inviato la tua recensione, grazie mille! Non devi fare nient'altro.",
+    back: "Torna a BelgoTours",
+  },
+  fr: {
+    title: "Ce lien d'avis n'est pas valide",
+    message: "Le lien n'est pas valide, a expiré ou a déjà été utilisé.",
+    secondary: "Si vous avez déjà envoyé votre avis, merci beaucoup ! Vous n'avez rien d'autre à faire.",
+    back: "Retour à BelgoTours",
+  },
+};
+
+const t = texts[uiLang];
+---
+
+<Layout title={`${t.title} | BelgoTours`} lang={uiLang} noindex={true}>
+  <main class="min-h-screen bg-gray-50/80 py-10 px-4">
+    <div class="max-w-xl mx-auto">
+      <section class="bg-white rounded-3xl shadow-xl border border-gray-100 p-6 md:p-8 text-center">
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
+          {t.title}
+        </h1>
+
+        <p class="text-sm md:text-base text-gray-700 mb-3">
+          {t.message}
+        </p>
+
+        <p class="text-sm text-gray-600 mb-6">
+          {t.secondary}
+        </p>
+
+        <a
+          href={`/${uiLang}/`}
+          class="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-brand-black hover:bg-gray-800 text-white font-semibold transition"
+        >
+          {t.back}
+        </a>
+      </section>
+    </div>
+  </main>
+</Layout>

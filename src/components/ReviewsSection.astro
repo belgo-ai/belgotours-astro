@@ -71,7 +71,7 @@ const initialReviews = reviews.slice(0, 6);
                 <div>
                   <div class="font-semibold text-neutral-900 text-sm">{r.cliente_nombre}</div>
                   {r.cliente_pais && (
-                    <div class="text-xs text-neutral-400 mt-0.5">{r.cliente_pais}</div>
+                    <div class="text-xs text-neutral-500 mt-0.5">{r.cliente_pais}</div>
                   )}
                 </div>
                 <div class="text-yellow-400 text-sm flex-shrink-0">
@@ -81,7 +81,7 @@ const initialReviews = reviews.slice(0, 6);
               <p class="text-neutral-600 text-sm leading-relaxed line-clamp-4">
                 {r.comentario_publico || "El viajero dejó una valoración positiva."}
               </p>
-              <div class="mt-3 pt-3 border-t border-neutral-100 text-xs text-neutral-400">
+              <div class="mt-3 pt-3 border-t border-neutral-100 text-xs text-neutral-500">
                 {new Date(r.fecha_tour).toLocaleDateString(
                   lang === "en" ? "en-GB" : lang === "it" ? "it-IT" : lang === "fr" ? "fr-FR" : "es-ES",
                   { day: "numeric", month: "long", year: "numeric" }
@@ -104,7 +104,7 @@ const initialReviews = reviews.slice(0, 6);
         )}
       </div>
     ) : (
-      <p class="text-center text-neutral-400 py-8">{t.noReviews}</p>
+      <p class="text-center text-neutral-600 py-8">{t.noReviews}</p>
     )}
   </div>
 </section>

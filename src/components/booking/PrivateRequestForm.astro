@@ -718,7 +718,7 @@ const preferredTimeOptions = Array.from(
         form.classList.add("hidden");
         successBox.classList.remove("hidden");
         successBox.scrollIntoView({
-          behavior: "smooth",
+          behavior: (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"),
           block: "start",
         });
 
@@ -738,7 +738,7 @@ const preferredTimeOptions = Array.from(
 
         errorBox.classList.remove("hidden");
         errorBox.scrollIntoView({
-          behavior: "smooth",
+          behavior: (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"),
           block: "center",
         });
 

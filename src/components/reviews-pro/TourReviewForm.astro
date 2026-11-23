@@ -104,7 +104,7 @@ const formId = `tour-review-form-${tourSlug}`;
 
 <div class="card max-w-2xl mx-auto mt-10" id={formId}>
   <div class="p-6 md:p-8">
-    <p class="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-1">{t.eyebrow}</p>
+    <p class="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1">{t.eyebrow}</p>
     <h3 class="text-xl md:text-2xl font-extrabold text-neutral-900 mb-6">{t.title}</h3>
 
     <form class="review-form space-y-5" novalidate>
@@ -140,7 +140,7 @@ const formId = `tour-review-form-${tourSlug}`;
       <div>
         <label class="label" for={`${formId}-email`}>{t.email}</label>
         <input class="input" type="email" id={`${formId}-email`} name="cliente_email" required maxlength="180" />
-        <p class="text-xs text-neutral-400 mt-1">{t.emailHint}</p>
+        <p class="text-xs text-neutral-500 mt-1">{t.emailHint}</p>
       </div>
 
       <div>
@@ -161,8 +161,8 @@ const formId = `tour-review-form-${tourSlug}`;
           placeholder={t.commentPlaceholder}
         ></textarea>
         <div class="flex justify-between mt-1">
-          <span class="text-xs text-neutral-400">{t.minChars}</span>
-          <span class="text-xs text-neutral-400 char-count">0/1000</span>
+          <span class="text-xs text-neutral-500">{t.minChars}</span>
+          <span class="text-xs text-neutral-500 char-count">0/1000</span>
         </div>
       </div>
 

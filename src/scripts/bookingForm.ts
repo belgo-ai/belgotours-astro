@@ -165,6 +165,12 @@ const summaryParticipants = document.getElementById("summaryParticipants");
 let currentStep = 1;
 let isSubmitting = false;
 
+// A11Y-01 — respeta prefers-reduced-motion en los desplazamientos por JS
+const prefersReducedMotion = () =>
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const scrollBehavior = (): ScrollBehavior =>
+  prefersReducedMotion() ? "auto" : "smooth";
+
 
 // Tracking UTM
 const urlParams = new URLSearchParams(window.location.search);
@@ -206,9 +212,9 @@ document.addEventListener("participantsUpdated", () => {
       const offsetTop = nextBtn.getBoundingClientRect().top
         - panel.getBoundingClientRect().top
         + panel.scrollTop - 16;
-      panel.scrollTo({ top: offsetTop, behavior: "smooth" });
+      panel.scrollTo({ top: offsetTop, behavior: scrollBehavior() });
     } else {
-      nextBtn.scrollIntoView({ behavior: "smooth", block: "center" });
+      nextBtn.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
     }
   }, 300);
 });
@@ -239,7 +245,7 @@ function showBookingError(message: string, opts: { backToStep1?: boolean } = {})
   bookingErrorText.textContent = message;
   bookingErrorBanner.classList.remove("hidden");
   bookingErrorBackBtn?.classList.toggle("hidden", !opts.backToStep1);
-  bookingErrorBanner.scrollIntoView({ behavior: "smooth", block: "center" });
+  bookingErrorBanner.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
 }
 
 function hideBookingError() {
@@ -283,7 +289,7 @@ bookingErrorBackBtn?.addEventListener("click", () => {
       const panel = document.querySelector(".panel-content");
       if (panel) {
         // Scroll al top del panel primero
-        panel.scrollTo({ top: 0, behavior: "smooth" });
+        panel.scrollTo({ top: 0, behavior: scrollBehavior() });
         // Luego al primer campo vacío del paso activo
         setTimeout(() => {
           const activeStep = document.querySelector(".booking-step.active");
@@ -292,11 +298,11 @@ bookingErrorBackBtn?.addEventListener("click", () => {
             const offset = firstInput.getBoundingClientRect().top
               - panel.getBoundingClientRect().top
               + panel.scrollTop - 80;
-            panel.scrollTo({ top: Math.max(0, offset), behavior: "smooth" });
+            panel.scrollTo({ top: Math.max(0, offset), behavior: scrollBehavior() });
           }
         }, 300);
       } else {
-        bookingRoot.scrollIntoView({ behavior: "smooth", block: "start" });
+        bookingRoot.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
       }
     }, 100);
   }
@@ -321,7 +327,7 @@ bookingErrorBackBtn?.addEventListener("click", () => {
   scrollIntoPanel(element);
   element.focus({ preventScroll: true });
 
-  element.animate(
+  if (!prefersReducedMotion()) element.animate(
     [
       { transform: "translateX(0)" },
       { transform: "translateX(-4px)" },
@@ -442,13 +448,15 @@ function updateStepper(stepNumber: number) {
     .querySelectorAll<HTMLElement>("[data-booking-step]")
     .forEach((el) => {
       const n = Number(el.dataset.bookingStep);
-      el.classList.remove("text-gray-900", "font-semibold", "text-gray-700", "text-gray-400");
+      el.classList.remove("text-gray-900", "font-semibold", "text-gray-700", "text-gray-500");
       if (n === stepNumber) {
         el.classList.add("text-gray-900", "font-semibold");
         el.setAttribute("aria-current", "step");
+        el.dataset.state = "current";
       } else {
-        el.classList.add(n < stepNumber ? "text-gray-700" : "text-gray-400");
+        el.classList.add(n < stepNumber ? "text-gray-700" : "text-gray-500");
         el.removeAttribute("aria-current");
+        el.dataset.state = n < stepNumber ? "done" : "todo";
       }
     });
 }
@@ -458,14 +466,14 @@ function updateStepper(stepNumber: number) {
 function scrollIntoPanel(el: HTMLElement) {
   const panel = el.closest(".panel-content") as HTMLElement | null;
   if (!panel) {
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
     return;
   }
   const place = () => {
     const offset = el.getBoundingClientRect().top
       - panel.getBoundingClientRect().top
       + panel.scrollTop - 96;
-    panel.scrollTo({ top: Math.max(0, offset), behavior: "smooth" });
+    panel.scrollTo({ top: Math.max(0, offset), behavior: scrollBehavior() });
   };
   place();
   window.visualViewport?.addEventListener("resize", place, { once: true });
@@ -513,7 +521,7 @@ function genericErrorEl(el: HTMLInputElement): HTMLElement {
   if (!msg) {
     msg = document.createElement("p");
     msg.id = id;
-    msg.className = "text-xs text-red-500 mt-1 hidden";
+    msg.className = "text-xs text-red-700 mt-1 hidden";
     let anchor: HTMLElement = (el.closest(".iti") as HTMLElement) || el;
     if (anchor.parentElement?.classList.contains("relative")) anchor = anchor.parentElement;
     anchor.insertAdjacentElement("afterend", msg);
@@ -589,10 +597,66 @@ function clearFieldError(el: HTMLInputElement) {
   return checked;
 }
 
+    // UX-01 final — resumen junto a "Continuar" (paso 1). Se lee siempre
+    // de window.bookingState, el mismo estado que valida y envía la
+    // reserva: fecha y hora sólo existen juntas tras elegir horario (el
+    // cambio de fecha las limpia), así que nunca muestra datos obsoletos.
+    const NAV_PEOPLE: Record<string, [string, string]> = {
+      es: ["persona", "personas"],
+      en: ["person", "people"],
+      it: ["persona", "persone"],
+      fr: ["personne", "personnes"],
+      pt: ["pessoa", "pessoas"],
+    };
+    const NAV_LOCALES: Record<string, string> = { es: "es-ES", en: "en-GB", it: "it-IT", fr: "fr-FR", pt: "pt-PT" };
+
+    function renderNavSummary() {
+      const el = document.getElementById("bookingNavSummary");
+      if (!el) return;
+      if (currentStep !== 1) {
+        el.classList.add("hidden");
+        return;
+      }
+      const state = (window as any).bookingState || {};
+      const total =
+        Number(state.participants?.adults ?? 1) + Number(state.participants?.children ?? 0);
+      const [one, many] = NAV_PEOPLE[lang] || NAV_PEOPLE.es;
+      const people = `${total} ${total === 1 ? one : many}`;
+
+      el.replaceChildren();
+      if (state.selectedDate && state.selectedTime) {
+        // Sin recorte: en pantallas estrechas salta de línea por el "·",
+        // nunca se pierde la hora
+        const when = document.createElement("span");
+        when.className = "block text-sm font-semibold text-gray-900";
+        const date = document.createElement("span");
+        date.className = "whitespace-nowrap";
+        date.textContent = formatTourDate(state.selectedDate, NAV_LOCALES[lang] || "es-ES", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+        });
+        const time = document.createElement("span");
+        time.className = "whitespace-nowrap";
+        time.textContent = state.selectedTime;
+        when.append(date, " · ", time);
+        el.append(when);
+      }
+      const who = document.createElement("span");
+      who.className = "block text-xs text-gray-600";
+      who.textContent = people;
+      el.append(who);
+      el.classList.remove("hidden");
+    }
+
     function updateNavigation() {
       if (!prevBtn || !nextBtn) return;
 
       prevBtn.disabled = currentStep === 1;
+      // En el paso 1 "Volver" no lleva a ningún sitio: su hueco lo ocupa
+      // el resumen de la selección
+      prevBtn.classList.toggle("hidden", currentStep === 1);
+      renderNavSummary();
       // FIX-01 F3: "Continuar" siempre habilitado; valida al pulsarlo y
       // explica qué falta (antes quedaba deshabilitado sin motivo visible).
       nextBtn.disabled = false;
@@ -717,7 +781,7 @@ step2Inputs.forEach((input) => {
         const offset = nextInput.getBoundingClientRect().top
           - panel.getBoundingClientRect().top
           + panel.scrollTop - 80;
-        panel.scrollTo({ top: Math.max(0, offset), behavior: "smooth" });
+        panel.scrollTo({ top: Math.max(0, offset), behavior: scrollBehavior() });
       }, 150);
     }
   });
