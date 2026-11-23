@@ -10,25 +10,28 @@ const INTERACTIVE =
   'a[href],button,input,select,textarea,label[for],[role="button"],[data-float-avoid]';
 const PAD = 4;
 
+// Por intersección de rectángulos y no por puntos de muestreo: un enlace
+// pequeño (p. ej. "Manage cookies" del pie) cabía entre los puntos de una
+// rejilla 3×3. Cada control que se cruza se confirma con elementsFromPoint
+// en el centro de la zona común, para no contar los que no se pintan ahí
+// (ocultos, sin pointer-events o recortados fuera del viewport).
 function coversControl(el: HTMLElement): boolean {
   const r = el.getBoundingClientRect();
   if (!r.width || !r.height) return false;
-  for (const fx of [0, 0.5, 1]) {
-    for (const fy of [0, 0.5, 1]) {
-      const x = r.left - PAD + (r.width + 2 * PAD) * fx;
-      const y = r.top - PAD + (r.height + 2 * PAD) * fy;
-      if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
-      const under = document
-        .elementsFromPoint(x, y)
-        .find(
-          (e) =>
-            !el.contains(e) &&
-            !e.contains(el) &&
-            !e.closest("[data-float-yield]") &&
-            e.closest(INTERACTIVE)
-        );
-      if (under) return true;
-    }
+  const left = Math.max(0, r.left - PAD);
+  const top = Math.max(0, r.top - PAD);
+  const right = Math.min(innerWidth, r.right + PAD);
+  const bottom = Math.min(innerHeight, r.bottom + PAD);
+  for (const c of document.querySelectorAll<HTMLElement>(INTERACTIVE)) {
+    if (el.contains(c) || c.contains(el) || c.closest("[data-float-yield]")) continue;
+    const cr = c.getBoundingClientRect();
+    const x1 = Math.max(left, cr.left);
+    const y1 = Math.max(top, cr.top);
+    const x2 = Math.min(right, cr.right);
+    const y2 = Math.min(bottom, cr.bottom);
+    if (x2 <= x1 || y2 <= y1) continue;
+    const hits = document.elementsFromPoint((x1 + x2) / 2, (y1 + y2) / 2);
+    if (hits.some((e) => c.contains(e))) return true;
   }
   return false;
 }
