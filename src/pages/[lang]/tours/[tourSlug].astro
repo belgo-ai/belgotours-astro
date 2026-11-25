@@ -711,6 +711,22 @@ canonical={canonicalUrl}
      Hijo directo del slot para que el sticky funcione. -->
 <Header slot="header" lang={lang} />
 
+<!-- BOOKING-FORM-PERF-01: el CTA se ve antes de que el HTML termine de
+     llegar y bookingPanel.js sólo se inicia en DOMContentLoaded; un toque
+     en ese intervalo se perdía. Se guarda aquí y bookingPanel.js abre el
+     panel en cuanto está listo. -->
+<script is:inline>
+  document.addEventListener("click", function (e) {
+    if (window.__btBookingReady) return;
+    var btn = e.target.closest && e.target.closest(".openBookingBtn, .openPrivateRequestBtn");
+    if (!btn) return;
+    e.preventDefault();
+    if (window.__btPendingBooking) window.__btPendingBooking.removeAttribute("aria-busy");
+    window.__btPendingBooking = btn;
+    btn.setAttribute("aria-busy", "true");
+  });
+</script>
+
 <!-- 2) HERO (dinámico desde Strapi) -->
 <section 
   id="tour-hero"

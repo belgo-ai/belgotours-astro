@@ -135,17 +135,22 @@ async function getHorariosByTourId(
    * proteger la API, pero el calendario recorre todas
    * las páginas. No existe un límite funcional total
    * para los horarios futuros del tour.
+   *
+   * BOOKING-FORM-PERF-01: sólo se piden los campos que se
+   * usan (antes populate=* traía el tour completo en cada
+   * horario: ~400 KB por página sin comprimir). La página 1
+   * da pageCount y el resto se pide en paralelo por tandas;
+   * el HTML se quedaba parado aquí ~5 s recorriendo 10
+   * páginas en serie, y con él los scripts del panel.
    */
   const transportPageSize = 100;
+  const parallelPages = 5;
   const allHorarios: Horario[] = [];
   const seenIds = new Set<number>();
 
-  let page = 1;
-
-  while (true) {
+  async function fetchPage(page: number) {
     const params = new URLSearchParams();
 
-    params.set("populate", "*");
     params.set(
       "filters[tour][id][$eq]",
       String(id)
@@ -157,6 +162,10 @@ async function getHorariosByTourId(
     params.set(
       "filters[disponible][$eq]",
       "true"
+    );
+
+    ["fecha", "hora", "cupoMaximo", "cupoOcupado"].forEach(
+      (field, i) => params.set(`fields[${i}]`, field)
     );
 
     params.set(
@@ -188,8 +197,12 @@ async function getHorariosByTourId(
       );
     }
 
-    const json = await res.json();
+    return res.json();
+  }
 
+  // Añade la página en orden; devuelve false si es la última
+  // (mismos criterios de parada que el recorrido en serie)
+  function addPage(json: any, page: number): boolean {
     const pageItems = Array.isArray(json?.data)
       ? json.data
       : [];
@@ -254,18 +267,42 @@ async function getHorariosByTourId(
       pageItems.length === 0
       || addedOnPage === 0;
 
-    if (
+    return !(
       reachedReportedLastPage
       || reachedShortPage
       || repeatedOrEmptyPage
-    ) {
-      break;
-    }
-
-    page += 1;
+    );
   }
 
-  return allHorarios;
+  const first = await fetchPage(1);
+  if (!addPage(first, 1)) return allHorarios;
+
+  const reportedPageCount = Number(
+    first?.meta?.pagination?.pageCount ?? 0
+  );
+
+  let page = 2;
+
+  while (true) {
+    // Sin pageCount fiable se sigue de una en una, como antes
+    const batchSize =
+      Number.isInteger(reportedPageCount) && reportedPageCount >= page
+        ? Math.min(parallelPages, reportedPageCount - page + 1)
+        : 1;
+
+    const pages = Array.from(
+      { length: batchSize },
+      (_, i) => page + i
+    );
+
+    const results = await Promise.all(pages.map(fetchPage));
+
+    for (let i = 0; i < pages.length; i++) {
+      if (!addPage(results[i], pages[i])) return allHorarios;
+    }
+
+    page += batchSize;
+  }
 }
 
 const horariosRaw = await getHorariosByTourId(tourId);

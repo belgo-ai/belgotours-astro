@@ -80,9 +80,11 @@ if (phoneInput) {
   } else if (iti && !iti.isValidNumber()) {
     errorEl?.classList.remove("hidden");
     phoneInput.classList.add("border-red-500", "ring-2", "ring-red-200");
+    phoneInput.setAttribute("aria-invalid", "true");
   } else {
     errorEl?.classList.add("hidden");
     phoneInput.classList.remove("border-red-500", "ring-2", "ring-red-200");
+    phoneInput.removeAttribute("aria-invalid");
   }
 });
 
@@ -93,12 +95,14 @@ phoneInput.addEventListener("input", () => {
   if (utilsReady && iti?.isValidNumber()) {
     document.getElementById("phoneError")?.classList.add("hidden");
     phoneInput.classList.remove("border-red-500", "ring-2", "ring-red-200");
+    phoneInput.removeAttribute("aria-invalid");
   }
 });
 phoneInput.addEventListener("countrychange", () => {
   if (utilsReady && iti?.isValidNumber()) {
     document.getElementById("phoneError")?.classList.add("hidden");
     phoneInput.classList.remove("border-red-500", "ring-2", "ring-red-200");
+    phoneInput.removeAttribute("aria-invalid");
   }
 });
 

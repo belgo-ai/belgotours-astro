@@ -12,6 +12,7 @@ function initBookingPanel() {
   const closeBtns = document.querySelectorAll(".closeBookingBtn");
 
   if (!overlayEl || !panelEl || openBtns.length === 0) {
+    window.__btPendingBooking?.removeAttribute("aria-busy");
     return;
   }
 
@@ -155,6 +156,17 @@ function initBookingPanel() {
   );
 
   overlayEl.addEventListener("click", closePanel);
+
+  // Toque recibido antes de este punto (captura inline en [tourSlug].astro)
+  window.__btBookingReady = true;
+  const pending = window.__btPendingBooking;
+  window.__btPendingBooking = null;
+  if (pending) {
+    pending.removeAttribute("aria-busy");
+    if (pending.isConnected) {
+      openPanel(!pending.classList.contains("openPrivateRequestBtn"), pending);
+    }
+  }
 }
 
 document.addEventListener("DOMContentLoaded", initBookingPanel);
