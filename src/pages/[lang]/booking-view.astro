@@ -53,11 +53,14 @@ const T = {
     it: "Riepilogo del tour",
     fr: "Résumé du tour",
   },
-  whatsapp: {
-    es: "Compartir por WhatsApp",
-    en: "Share via WhatsApp",
-    it: "Condividi via WhatsApp",
-    fr: "Partager via WhatsApp",
+  // BOOKING-UX-02: este botón escribe al WhatsApp de BelgoTours con el
+  // código de reserva — es contacto, no "compartir" (que en la pantalla de
+  // éxito envía el tour a un contacto elegido por el usuario)
+  contact: {
+    es: "Contactar a BelgoTours",
+    en: "Contact BelgoTours",
+    it: "Contatta BelgoTours",
+    fr: "Contacter BelgoTours",
   },
   back: {
     es: "Volver a BelgoTours",
@@ -138,6 +141,12 @@ if (!reservaId) {
     error = T.error[lang];
   }
 }
+
+// BOOKING-UX-02: singular con 1 ("1 adulto, 1 niño")
+const plural = (n: unknown, one: string, many: string) => `${n} ${Number(n) === 1 ? one : many}`;
+const participantesTexto = reserva
+  ? `${plural(reserva.adultos, "adulto", "adultos")}, ${plural(reserva.ninos, "niño", "niños")}`
+  : "";
 
 // =============================
 // Punto de encuentro real del tour reservado (FIX-01 F5)
@@ -286,7 +295,7 @@ if (reserva?.tour?.slug) {
 
               <p class="font-medium">{T.labels.participants[lang]}</p>
               <p>
-                {reserva.adultos} adultos, {reserva.ninos} niños
+                {participantesTexto}
               </p>
 
               <p class="font-medium">{T.labels.language[lang]}</p>
@@ -298,18 +307,21 @@ if (reserva?.tour?.slug) {
           <div class="space-y-4">
             <a
               href={`https://wa.me/32489829468?text=${encodeURIComponent(
-                `Hola BelgoTours 👋
-
-                  Reserva #${reserva.id}
-                  Tour: ${reserva.tour?.titulo}
-                  Fecha: ${fechaFormateada}
-                  Hora: ${horaFormateada}
-                  Participantes: ${reserva.adultos} adultos, ${reserva.ninos} niños`
-                  )}`}
+                [
+                  "Hola BelgoTours 👋",
+                  "",
+                  `Reserva #${reserva.id}`,
+                  `Tour: ${reserva.tour?.titulo}`,
+                  `Fecha: ${fechaFormateada}`,
+                  `Hora: ${horaFormateada}`,
+                  `Participantes: ${participantesTexto}`,
+                ].join("\n")
+              )}`}
               target="_blank"
+              rel="noopener"
               class="w-full block text-center px-6 py-4 rounded-xl bg-green-700 text-white font-semibold hover:bg-green-800"
             >
-              {T.whatsapp[lang]}
+              {T.contact[lang]}
             </a>
 
             <a

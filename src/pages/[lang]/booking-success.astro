@@ -106,16 +106,59 @@ if (!reservaId) {
   }
 }
 
+// BOOKING-UX-02 — "Compartir por WhatsApp" es para acompañantes (amigos,
+// familia): wa.me sin número de destino y sólo datos públicos del tour
+// (nombre, fecha, hora, enlace público). Nunca el código de reserva, ni
+// datos del cliente, ni URLs privadas o tokens.
+const SHARE_INTRO: Record<string, string> = {
+  es: "¡Reservado! Nos vamos de tour con BelgoTours:",
+  en: "Booked! We're going on a tour with BelgoTours:",
+  it: "Prenotato! Andiamo in tour con BelgoTours:",
+  fr: "Réservé ! On part en visite avec BelgoTours :",
+};
+const SHARE_SUBTEXT: Record<string, string> = {
+  es: "Envía los datos del tour a quien viene contigo",
+  en: "Send the tour details to whoever is coming with you",
+  it: "Invia i dettagli del tour a chi viene con te",
+  fr: "Envoyez les détails de la visite à ceux qui vous accompagnent",
+};
+const PARTICIPANTS_SHORT = (adultos: number, ninos: number) => {
+  const total = (adultos || 0) + (ninos || 0);
+  const word: Record<string, [string, string]> = {
+    es: ["persona", "personas"],
+    en: ["person", "people"],
+    it: ["persona", "persone"],
+    fr: ["personne", "personnes"],
+  };
+  const [one, many] = word[lang ?? "es"] || word.es;
+  return `${total} ${total === 1 ? one : many}`;
+};
+const publicTourUrl =
+  reserva?.tour?.slug
+    ? new URL(`/${lang}/tours/${reserva.tour.slug}`, Astro.site).toString()
+    : new URL(`/${lang}/`, Astro.site).toString();
+const shareText = reserva
+  ? [
+      SHARE_INTRO[lang ?? "es"] || SHARE_INTRO.es,
+      reserva.tour?.titulo,
+      `${fechaFormateada} · ${horaFormateada}`,
+      publicTourUrl,
+    ]
+      .filter(Boolean)
+      .join("\n")
+  : "";
+const shareHref = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+
 // A11Y-01 — <title> de la pestaña (antes vacío)
 const titleByLang: Record<string, string> = T.title;
 const pageTitle = `${error ?? titleByLang[lang ?? "es"] ?? T.title.es} | BelgoTours`;
 ---
 
 <Layout title={pageTitle} lang={lang} noindex={true}>
-  <main class="min-h-screen bg-gray-50 py-10 px-4">
+  <main class="min-h-screen bg-gray-50 py-6 sm:py-10 px-4">
     <div class="max-w-3xl mx-auto">
 
-      <div class="bg-white shadow-xl rounded-3xl p-8 border border-gray-100">
+      <div class="bg-white shadow-xl rounded-3xl p-5 sm:p-8 border border-gray-100">
 
         <!-- SI HAY ERROR -->
         {error ? (
@@ -130,29 +173,59 @@ const pageTitle = `${error ?? titleByLang[lang ?? "es"] ?? T.title.es} | BelgoTo
           </div>
         ) : (
           <>
-            <!-- ENCABEZADO -->
-            <div class="flex flex-wrap items-start justify-between gap-4 mb-8">
-              <div>
-                <h1 class="text-3xl font-bold text-gray-900 inline-flex items-center gap-2.5">
-                  <span class="inline-flex w-9 h-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                    <Icon name="check-circle" size={20} />
-                  </span>
-                  {T.title[lang]}
-                </h1>
-                <p class="text-gray-600">{T.subtitle[lang]}</p>
-              </div>
-
-              <div class="bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-center shadow-sm">
-                <p class="text-xs uppercase tracking-wide text-gray-500">
-                  {T.reservationCode[lang]}
-                </p>
-                <p class="text-lg font-bold text-gray-900">{reserva.id}</p>
-              </div>
+            <!-- ENCABEZADO — BOOKING-UX-02: confirmación, resumen compacto y
+                 acciones a la vista en móvil; el detalle extenso va después -->
+            <div>
+              <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 inline-flex items-center gap-2.5">
+                <span class="inline-flex w-9 h-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                  <Icon name="check-circle" size={20} />
+                </span>
+                {T.title[lang]}
+              </h1>
+              <p class="text-gray-600 mt-1">{T.subtitle[lang]}</p>
             </div>
 
-            <!-- BLOQUE PRINCIPAL -->
-            <div class="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-2xl p-6 shadow-inner mb-8">
-              <h2 class="text-xl font-semibold mb-4 text-gray-800">
+            <div class="mt-5 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3">
+              <p class="font-semibold text-gray-900 leading-snug">{reserva.tour?.titulo}</p>
+              <p class="text-sm text-gray-700 mt-1">
+                {fechaFormateada} · {horaFormateada} · {PARTICIPANTS_SHORT(reserva.adultos, reserva.ninos)}
+              </p>
+              <p class="text-xs text-gray-600 mt-2">
+                {T.reservationCode[lang]}: <span class="font-semibold text-gray-900">{reserva.id}</span>
+              </p>
+            </div>
+
+            <!-- BOTONES DE ACCIÓN -->
+            <div class="mt-5 space-y-3">
+              <a
+                href={shareHref}
+                target="_blank"
+                rel="noopener"
+                class="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-green-700 text-white font-semibold hover:bg-green-800"
+              >
+                <Icon name="message-circle" size={20} />
+                {T.whatsapp[lang]}
+              </a>
+              <p class="text-xs text-gray-600 text-center -mt-1">{SHARE_SUBTEXT[lang ?? "es"] || SHARE_SUBTEXT.es}</p>
+
+              <a
+                href={`/${lang}/booking-view?id=${reserva.id}`}
+                class="w-full block text-center px-6 py-3.5 rounded-xl border border-gray-300 text-gray-900 font-semibold hover:bg-gray-100"
+              >
+                {T.viewDetails[lang]}
+              </a>
+
+              <a
+                href={`/${lang}/`}
+                class="block text-center py-2 text-sm font-semibold text-gray-700 underline underline-offset-4 hover:text-gray-900"
+              >
+                {T.backToHome[lang]}
+              </a>
+            </div>
+
+            <!-- DETALLE (información extensa, ya resumida arriba) -->
+            <div class="mt-8 border-t border-gray-200 pt-6">
+              <h2 class="text-base font-semibold mb-3 text-gray-800">
                 {isEn ? "Booking details" : "Detalles de tu reserva"}
               </h2>
 
@@ -160,59 +233,23 @@ const pageTitle = `${error ?? titleByLang[lang ?? "es"] ?? T.title.es} | BelgoTo
                 <p class="font-medium">Tour</p>
                 <p>{reserva.tour?.titulo}</p>
 
-                  <p class="font-medium">{isEn ? "Date" : "Fecha"}</p>
-                   <p>{fechaFormateada}</p>
+                <p class="font-medium">{isEn ? "Date" : "Fecha"}</p>
+                <p>{fechaFormateada}</p>
 
-                   <p class="font-medium">{isEn ? "Time" : "Horario"}</p>
-                    <p>{horaFormateada}</p>
+                <p class="font-medium">{isEn ? "Time" : "Horario"}</p>
+                <p>{horaFormateada}</p>
+
                 <p class="font-medium">{isEn ? "Participants" : "Participantes"}</p>
                 <p>
                   {isEn
                     ? `${plural(reserva.adultos, "adult", "adults")}, ${plural(reserva.ninos, "child", "children")}`
-                    : `${reserva.adultos} adultos, ${reserva.ninos} niños`}
+                    : `${plural(reserva.adultos, "adulto", "adultos")}, ${plural(reserva.ninos, "niño", "niños")}`}
                 </p>
 
                 <p class="font-medium">{isEn ? "Language" : "Idioma"}</p>
                 <p>{reserva.idioma_tour?.toUpperCase()}</p>
-
-                
               </div>
             </div>
-
-            <!-- BOTONES DE ACCIÓN -->
-            <div class="space-y-4">
-
-                 <a
-                   href={`/${lang}/booking-view?id=${reserva.id}`}
-                   class="w-full block text-center px-6 py-4 rounded-xl bg-gray-800 text-white font-semibold hover:bg-gray-900"
-                   >
-                   {T.viewDetails[lang]}
-                   </a>
-
-                  <a
-  href={`https://wa.me/32489829468?text=${encodeURIComponent(
-    `Hola BelgoTours 👋
-
-Reserva #${reserva.id}
-Tour: ${reserva.tour?.titulo}
-Fecha: ${fechaFormateada}
-Hora: ${horaFormateada}
-Participantes: ${reserva.adultos} adultos, ${reserva.ninos} niños`
-  )}`}
-  target="_blank"
-  class="w-full block text-center px-6 py-4 rounded-xl bg-green-700 text-white font-semibold hover:bg-green-800"
->
-  {T.whatsapp[lang]}
-</a>
-
-                <a
-    href={`/${lang}/`}
-    class="block text-center px-6 py-4 rounded-xl bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300"
-  >
-    {T.backToHome[lang]}
-  </a>
-
-</div>
 
 <script
   is:inline

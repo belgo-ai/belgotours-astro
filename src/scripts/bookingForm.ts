@@ -2,6 +2,7 @@
  
 import intlTelInput from "intl-tel-input";
 import "intl-tel-input/build/css/intlTelInput.css";
+import { setupCountryAutocomplete } from "./placeAutocomplete";
 
 
 
@@ -296,12 +297,16 @@ bookingErrorBackBtn?.addEventListener("click", () => {
         panel.scrollTo({ top: 0, behavior: scrollBehavior() });
         // Luego al primer campo vacío del paso activo
         setTimeout(() => {
-          const activeStep = document.querySelector(".booking-step.active");
-          const firstInput = activeStep?.querySelector("input:not([type='hidden']):not([type='checkbox'])") as HTMLElement | null;
+          const activeStep = document.querySelector(".booking-step.active") as HTMLElement | null;
+          // BOOKING-UX-02: en el paso 3 (sin campos de texto) el título del
+          // paso queda arriba, con resumen, términos y "Confirmar" a la vista
+          const firstInput = stepNumber === 3
+            ? activeStep
+            : activeStep?.querySelector("input:not([type='hidden']):not([type='checkbox'])") as HTMLElement | null;
           if (firstInput && panel) {
             const offset = firstInput.getBoundingClientRect().top
               - panel.getBoundingClientRect().top
-              + panel.scrollTop - 80;
+              + panel.scrollTop - (stepNumber === 3 ? 16 : 80);
             panel.scrollTo({ top: Math.max(0, offset), behavior: scrollBehavior() });
           }
         }, 300);
@@ -722,11 +727,19 @@ function clearFieldError(el: HTMLInputElement) {
         summaryTime.textContent = state.selectedTime;
       }
       if (summaryParticipants && state.participants) {
+        // BOOKING-UX-02: singular con 1 ("1 adulto", no "1 adultos")
+        const { adults, children } = state.participants;
         const adultsWord =
-          lang === "en" ? "adults" : lang === "it" ? "adulti" : lang === "fr" ? "adultes" : "adultos";
+          lang === "en" ? (adults === 1 ? "adult" : "adults")
+          : lang === "it" ? (adults === 1 ? "adulto" : "adulti")
+          : lang === "fr" ? (adults === 1 ? "adulte" : "adultes")
+          : adults === 1 ? "adulto" : "adultos";
         const childrenWord =
-          lang === "en" ? "children" : lang === "it" ? "bambini" : lang === "fr" ? "enfants" : "niños";
-        summaryParticipants.textContent = `${state.participants.adults} ${adultsWord}, ${state.participants.children} ${childrenWord}`;
+          lang === "en" ? (children === 1 ? "child" : "children")
+          : lang === "it" ? (children === 1 ? "bambino" : "bambini")
+          : lang === "fr" ? (children === 1 ? "enfant" : "enfants")
+          : children === 1 ? "niño" : "niños";
+        summaryParticipants.textContent = `${adults} ${adultsWord}, ${children} ${childrenWord}`;
       }
 
          const step2SummaryDate = document.getElementById("step2SummaryDate");
@@ -1168,72 +1181,14 @@ const marketingConsent = getInput("marketingConsent")?.checked || false;
       }
     }
 
-    // 🌍 AUTOCOMPLETE COUNTRY + CITY
-function setupAutocomplete(
-  inputId: string,
-  suggestionId: string,
-  type: "country" | "city"
-) {
-  const input = document.getElementById(inputId) as HTMLInputElement | null;
-  const suggestionBox = document.getElementById(suggestionId);
+    // 🌍 AUTOCOMPLETE COUNTRY (BOOKING-UX-02: placeAutocomplete.ts). Ciudad
+    // es texto libre con el autorrelleno del navegador, sin lista propia.
+const countryInput = getInput("customerCountry");
+const countryBox = document.getElementById("countrySuggestions");
 
-  if (!input || !suggestionBox) return;
-
-  let debounceTimeout: ReturnType<typeof setTimeout>;
-
-  input.addEventListener("input", () => {
-    const query = input.value.trim();
-    suggestionBox.innerHTML = "";
-    suggestionBox.classList.add("hidden");
-
-    if (query.length < 2) return;
-
-    clearTimeout(debounceTimeout);
-
-    debounceTimeout = setTimeout(async () => {
-      try {
-       const url = `/.netlify/functions/geocode?q=${encodeURIComponent(query)}&type=${encodeURIComponent(type)}&lang=${encodeURIComponent(lang)}`;
-
-       const res = await fetch(url);
-
-        if (!res.ok) return;
-
-        const data = await res.json();
-        if (!Array.isArray(data)) return;
-
-        data.forEach((item) => {
-          const option = document.createElement("div");
-          option.className = "px-3 py-2 cursor-pointer hover:bg-gray-100 transition";
-          option.textContent = (item.display_name || "").split(",")[0];
-
-          option.addEventListener("click", () => {
-            input.value = option.textContent || "";
-            suggestionBox.classList.add("hidden");
-            updateNavigation();
-          });
-
-          suggestionBox.appendChild(option);
-        });
-
-        if (data.length > 0) {
-          suggestionBox.classList.remove("hidden");
-        }
-      } catch (err) {
-        console.error("Autocomplete error:", err);
-      }
-    }, 300);
-  });
-
-  document.addEventListener("click", (e) => {
-    if (!input.contains(e.target as Node)) {
-      suggestionBox.classList.add("hidden");
-    }
-  });
+if (countryInput && countryBox) {
+  setupCountryAutocomplete(countryInput, countryBox, lang, updateNavigation, getInput("customerCity"));
 }
-
-// Inicializar autocomplete
-setupAutocomplete("customerCountry", "countrySuggestions", "country");
-setupAutocomplete("customerCity", "citySuggestions", "city");
 
    
   showStep(1);

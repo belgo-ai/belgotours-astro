@@ -320,23 +320,25 @@ const STRAPI_API_BASE =
       {lang === "it" && "Paese"}
       {lang === "fr" && "Pays"} *
     </label>
-    <!-- autocomplete="off" es deliberado, no un olvido: este campo ya
-         tiene su propio autocompletado real (geocoding vía
-         #countrySuggestions) — dejar el autocomplete nativo activo
-         haría competir dos listas de sugerencias superpuestas
-         (B09 Gate 9, §5/§6). -->
+    <!-- BOOKING-UX-02: lista local de países (placeAutocomplete.ts), sin
+         red. autocomplete="country-name" (antes "off", B09 Gate 9) deja
+         que el autorrelleno del navegador complete el formulario de una
+         vez; la lista propia sólo se abre al teclear, nunca con un valor
+         autorrellenado. -->
     <div class="relative">
       <input
         id="customerCountry"
         name="customerCountry"
         type="text"
         required
-        autocomplete="off"
+        autocomplete="country-name"
+        autocapitalize="words"
+        spellcheck="false"
         class="bt-field"
         placeholder={lang === "es" ? "España, México, Italia..." : lang === "en" ? "Spain, Mexico, Italy..." : lang === "it" ? "Spagna, Messico, Italia..." : "Espagne, Mexique, Italie..."}
       />
       <div id="countrySuggestions"
-           class="absolute z-20 bg-white border border-gray-200 rounded-xl shadow-lg w-full mt-1 hidden max-h-48 overflow-y-auto text-sm">
+           class="absolute z-20 bg-white border border-gray-200 rounded-xl shadow-lg w-full mt-1 hidden max-h-60 overflow-y-auto text-sm">
       </div>
     </div>
   </div>
@@ -349,21 +351,20 @@ const STRAPI_API_BASE =
       {lang === "it" && "Città"}
       {lang === "fr" && "Ville"} *
     </label>
-    <!-- autocomplete="off" deliberado — mismo motivo que customerCountry -->
-    <div class="relative">
-      <input
-        id="customerCity"
-        name="customerCity"
-        type="text"
-        required
-        autocomplete="off"
-        class="bt-field"
-        placeholder={lang === "es" ? "Madrid, Roma, Bruselas..." : lang === "en" ? "Madrid, Rome, Brussels..." : lang === "it" ? "Madrid, Roma, Bruxelles..." : "Madrid, Rome, Bruxelles..."}
-      />
-      <div id="citySuggestions"
-           class="absolute z-20 bg-white border border-gray-200 rounded-xl shadow-lg w-full mt-1 hidden max-h-48 overflow-y-auto text-sm">
-      </div>
-    </div>
+    <!-- BOOKING-UX-02: texto libre con el autorrelleno del navegador.
+         Sin lista propia: la política de Nominatim público no permite
+         autocompletado (antes se consultaba en cada tecla) -->
+    <input
+      id="customerCity"
+      name="customerCity"
+      type="text"
+      required
+      autocomplete="address-level2"
+      autocapitalize="words"
+      spellcheck="false"
+      class="bt-field"
+      placeholder={lang === "es" ? "Madrid, Roma, Bruselas..." : lang === "en" ? "Madrid, Rome, Brussels..." : lang === "it" ? "Madrid, Roma, Bruxelles..." : "Madrid, Rome, Bruxelles..."}
+    />
   </div>
 </div>
 
@@ -482,83 +483,43 @@ const STRAPI_API_BASE =
 </div>
 
 <!-- PASO 3: RESUMEN + TÉRMINOS -->
-    <div id="step3" class="booking-step hidden space-y-6">
-      <h3 class="text-2xl font-bold text-gray-900">
+    <div id="step3" class="booking-step hidden space-y-4">
+      <h3 class="text-xl font-bold text-gray-900">
         {confirmTitleByLang[lang] || confirmTitleByLang.es}
       </h3>
 
-      <div class="bg-gray-50 rounded-2xl border-2 border-gray-200 p-6 space-y-4">
-        <h4 class="font-semibold text-lg text-gray-800">
+      <!-- BOOKING-UX-02: resumen compacto (los mismos datos y ids que antes)
+           para que "Confirmar reserva" quede a la vista sin scroll en
+           móvil; comentarios y "cómo nos conociste" pasan debajo -->
+      <section
+        class="bg-gray-50 rounded-2xl border border-gray-200 px-4 py-3"
+        aria-labelledby="step3SummaryTitle"
+      >
+        <h4 id="step3SummaryTitle" class="sr-only">
           {bookingSummaryByLang[lang] || bookingSummaryByLang.es}
         </h4>
-        <div class="space-y-3 text-gray-700 text-sm">
-          <div class="flex justify-between">
-            <span>Tour</span>
-            <span class="font-semibold text-right max-w-[60%]">
-              {tour?.titulo}
-            </span>
+        <p class="text-sm font-semibold text-gray-900 leading-snug">
+          {tour?.titulo}
+        </p>
+        <dl class="bt-summary-line mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-700">
+          <div>
+            <dt class="sr-only">{lang === "es" ? "Fecha" : "Date"}</dt>
+            <dd class="font-semibold text-gray-900" id="summaryDate">--/--/----</dd>
           </div>
-          <div class="flex justify-between">
-            <span>{lang === "es" ? "Fecha" : "Date"}</span>
-            <span class="font-semibold" id="summaryDate">--/--/----</span>
+          <div>
+            <dt class="sr-only">{lang === "es" ? "Horario" : "Time"}</dt>
+            <dd class="font-semibold text-gray-900" id="summaryTime">--:--</dd>
           </div>
-          <div class="flex justify-between">
-            <span>{lang === "es" ? "Horario" : "Time"}</span>
-            <span class="font-semibold" id="summaryTime">--:--</span>
+          <div>
+            <dt class="sr-only">{lang === "es" ? "Participantes" : "Participants"}</dt>
+            <dd id="summaryParticipants">--</dd>
           </div>
-          <div class="flex justify-between">
-            <span>
-              {lang === "es" ? "Participantes" : "Participants"}
-            </span>
-            <span class="font-semibold" id="summaryParticipants">--</span>
+          <div>
+            <dt class="sr-only">{lang === "es" ? "Idioma" : "Language"}</dt>
+            <dd class="uppercase">{lang}</dd>
           </div>
-          <div class="flex justify-between">
-            <span>{lang === "es" ? "Idioma" : "Language"}</span>
-            <span class="font-semibold uppercase">{lang}</span>
-          </div>
-          
-        </div>
-      </div>
-
-      <div class="space-y-4">
-        <!-- Comentarios opcionales -->
-      <details class="text-sm text-gray-400 cursor-pointer">
-        <summary class="hover:text-gray-600 transition">
-          {lang === "es" ? "¿Algo que debamos saber?" :
-           lang === "en" ? "Anything we should know?" :
-           lang === "it" ? "Qualcosa che dovremmo sapere?" :
-           "Quelque chose à savoir?"} (opcional)
-        </summary>
-        <textarea
-          id="customerComments"
-          name="customerComments"
-          rows="2"
-          class="mt-2 w-full p-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 focus:border-gray-400 focus:outline-none resize-none"
-          placeholder={lang === "es" ? "Ej: viajamos con niños, silla de ruedas..." : "E.g. traveling with children, wheelchair..."}
-        ></textarea>
-      </details>
-
-      <!-- Cómo nos conociste — campo de marketing, no bloquea -->
-      <details class="text-sm text-gray-400 cursor-pointer">
-        <summary class="hover:text-gray-600 transition">
-          {howHeardLabelByLang[lang] || howHeardLabelByLang.es} (opcional)
-        </summary>
-        <select
-          id="howHeard"
-          name="howHeard"
-          class="mt-2 w-full p-2.5 border border-gray-200 rounded-xl bg-white text-sm text-gray-600 focus:border-gray-400 focus:outline-none"
-        >
-          <option value="">{lang === "es" ? "Selecciona una opción" : "Select an option"}</option>
-          <option value="google">Google</option>
-          <option value="instagram">Instagram</option>
-          <option value="friends">{lang === "es" ? "Amigos / Familia" : "Friends / Family"}</option>
-          <option value="guruwalk">GuruWalk</option>
-          <option value="civitatis">Civitatis</option>
-          <option value="tripadvisor">TripAdvisor</option>
-          <option value="getyourguide">GetYourGuide</option>
-          <option value="other">{lang === "es" ? "Otro" : "Other"}</option>
-        </select>
-      </details>
+        </dl>
+      </section>
 
       <label class="flex items-start gap-3 cursor-pointer">
           <input
@@ -572,14 +533,6 @@ const STRAPI_API_BASE =
             {privacyTextByLang[lang] || privacyTextByLang.es} *
           </span>
         </label>
-
-        <p class="text-xs text-gray-500">
-          {lang === "es" &&
-            "Al confirmar, recibirás un email automático con todos los detalles y un mensaje preparado para compartir por WhatsApp."}
-          {lang === "en" &&
-            "After confirming, you will receive an automatic email with all details and a pre-filled message to share on WhatsApp."}
-        </p>
-      </div>
 
       <!-- CONFIRMAR RESERVA / SOLICITUD -->
 <button
@@ -636,6 +589,54 @@ const STRAPI_API_BASE =
     </>
   )}
 </p>
+
+<p class="text-xs text-gray-500 text-center">
+          {lang === "es" &&
+            "Al confirmar, recibirás un email automático con todos los detalles y un mensaje preparado para compartir por WhatsApp."}
+          {lang === "en" &&
+            "After confirming, you will receive an automatic email with all details and a pre-filled message to share on WhatsApp."}
+        </p>
+
+<div class="space-y-3 pt-1">
+        <!-- Comentarios opcionales -->
+      <details class="text-sm text-gray-600 cursor-pointer">
+        <summary class="hover:text-gray-900 transition">
+          {lang === "es" ? "¿Algo que debamos saber?" :
+           lang === "en" ? "Anything we should know?" :
+           lang === "it" ? "Qualcosa che dovremmo sapere?" :
+           "Quelque chose à savoir?"} (opcional)
+        </summary>
+        <textarea
+          id="customerComments"
+          name="customerComments"
+          rows="2"
+          class="mt-2 w-full p-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 focus:border-gray-400 focus:outline-none resize-none"
+          placeholder={lang === "es" ? "Ej: viajamos con niños, silla de ruedas..." : "E.g. traveling with children, wheelchair..."}
+        ></textarea>
+      </details>
+
+      <!-- Cómo nos conociste — campo de marketing, no bloquea -->
+      <details class="text-sm text-gray-600 cursor-pointer">
+        <summary class="hover:text-gray-900 transition">
+          {howHeardLabelByLang[lang] || howHeardLabelByLang.es} (opcional)
+        </summary>
+        <select
+          id="howHeard"
+          name="howHeard"
+          class="mt-2 w-full p-2.5 border border-gray-200 rounded-xl bg-white text-sm text-gray-600 focus:border-gray-400 focus:outline-none"
+        >
+          <option value="">{lang === "es" ? "Selecciona una opción" : "Select an option"}</option>
+          <option value="google">Google</option>
+          <option value="instagram">Instagram</option>
+          <option value="friends">{lang === "es" ? "Amigos / Familia" : "Friends / Family"}</option>
+          <option value="guruwalk">GuruWalk</option>
+          <option value="civitatis">Civitatis</option>
+          <option value="tripadvisor">TripAdvisor</option>
+          <option value="getyourguide">GetYourGuide</option>
+          <option value="other">{lang === "es" ? "Otro" : "Other"}</option>
+        </select>
+      </details>
+</div>
 
 </div>
 
@@ -846,6 +847,17 @@ const STRAPI_API_BASE =
   .bt-field.border-red-500:focus,
   .bt-field[aria-invalid="true"]:focus {
     box-shadow: 0 0 0 1px #dc2626, 0 0 0 4px rgba(250, 204, 21, 0.7);
+  }
+  /* BOOKING-UX-02: "fecha · hora · personas · idioma" en una línea; el
+     separador es decorativo (texto alternativo vacío) */
+  .bt-summary-line > div {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .bt-summary-line > div:not(:last-child)::after {
+    content: "·" / "";
+    color: #9ca3af;
   }
   /* intl-tel-input envuelve el teléfono en .iti (inline-block por
      defecto): sin esto el campo quedaba más estrecho que los demás */
