@@ -3,180 +3,223 @@ interface Props { lang: string; }
 const { lang = "es" } = Astro.props;
 
 const t: Record<string, any> = {
-  es: { text: "Usamos cookies para mejorar tu experiencia y analizar el tráfico.", more: "Más info", accept: "Aceptar", reject: "Rechazar", settings: "Configurar", panelTitle: "Preferencias de cookies", essential: "Esenciales", essentialDesc: "Necesarias para el funcionamiento", analytics: "Analíticas", analyticsDesc: "Nos ayudan a mejorar la web", marketing: "Marketing", marketingDesc: "Contenido personalizado", save: "Guardar" },
-  en: { text: "We use cookies to improve your experience and analyze traffic.", more: "Learn more", accept: "Accept", reject: "Reject", settings: "Customize", panelTitle: "Cookie preferences", essential: "Essential", essentialDesc: "Required for site functionality", analytics: "Analytics", analyticsDesc: "Help us improve", marketing: "Marketing", marketingDesc: "Personalized content", save: "Save" },
-  it: { text: "Utilizziamo cookie per migliorare la tua esperienza e analizzare il traffico.", more: "Maggiori info", accept: "Accetta", reject: "Rifiuta", settings: "Configura", panelTitle: "Preferenze cookie", essential: "Essenziali", essentialDesc: "Necessari per il sito", analytics: "Analitici", analyticsDesc: "Ci aiutano a migliorare", marketing: "Marketing", marketingDesc: "Contenuto personalizzato", save: "Salva" },
-  fr: { text: "Nous utilisons des cookies pour améliorer votre expérience et analyser le trafic.", more: "En savoir plus", accept: "Accepter", reject: "Refuser", settings: "Configurer", panelTitle: "Préférences cookies", essential: "Essentiels", essentialDesc: "Nécessaires au fonctionnement", analytics: "Analytiques", analyticsDesc: "Nous aident à améliorer", marketing: "Marketing", marketingDesc: "Contenu personnalisé", save: "Enregistrer" },
-  pt: { text: "Usamos cookies para melhorar sua experiência e analisar o tráfego.", more: "Saiba mais", accept: "Aceitar", reject: "Rejeitar", settings: "Configurar", panelTitle: "Preferências de cookies", essential: "Essenciais", essentialDesc: "Necessários para o site", analytics: "Analíticos", analyticsDesc: "Nos ajudam a melhorar", marketing: "Marketing", marketingDesc: "Conteúdo personalizado", save: "Salvar" },
+  es: { title: "Cookies", close: "Cerrar", text: "Usamos cookies para mejorar tu experiencia y analizar el tráfico.", more: "Más info", accept: "Aceptar", reject: "Rechazar", settings: "Configurar", panelTitle: "Preferencias de cookies", essential: "Esenciales", essentialDesc: "Necesarias para el funcionamiento", analytics: "Analíticas", analyticsDesc: "Nos ayudan a mejorar la web", marketing: "Marketing", marketingDesc: "Contenido personalizado", save: "Guardar" },
+  en: { title: "Cookies", close: "Close", text: "We use cookies to improve your experience and analyze traffic.", more: "Learn more", accept: "Accept", reject: "Reject", settings: "Customize", panelTitle: "Cookie preferences", essential: "Essential", essentialDesc: "Required for site functionality", analytics: "Analytics", analyticsDesc: "Help us improve", marketing: "Marketing", marketingDesc: "Personalized content", save: "Save" },
+  it: { title: "Cookie", close: "Chiudi", text: "Utilizziamo cookie per migliorare la tua esperienza e analizzare il traffico.", more: "Maggiori info", accept: "Accetta", reject: "Rifiuta", settings: "Configura", panelTitle: "Preferenze cookie", essential: "Essenziali", essentialDesc: "Necessari per il sito", analytics: "Analitici", analyticsDesc: "Ci aiutano a migliorare", marketing: "Marketing", marketingDesc: "Contenuto personalizzato", save: "Salva" },
+  fr: { title: "Cookies", close: "Fermer", text: "Nous utilisons des cookies pour améliorer votre expérience et analyser le trafic.", more: "En savoir plus", accept: "Accepter", reject: "Refuser", settings: "Configurer", panelTitle: "Préférences cookies", essential: "Essentiels", essentialDesc: "Nécessaires au fonctionnement", analytics: "Analytiques", analyticsDesc: "Nous aident à améliorer", marketing: "Marketing", marketingDesc: "Contenu personnalisé", save: "Enregistrer" },
+  pt: { title: "Cookies", close: "Fechar", text: "Usamos cookies para melhorar sua experiência e analisar o tráfego.", more: "Saiba mais", accept: "Aceitar", reject: "Rejeitar", settings: "Configurar", panelTitle: "Preferências de cookies", essential: "Essenciais", essentialDesc: "Necessários para o site", analytics: "Analíticos", analyticsDesc: "Nos ajudam a melhorar", marketing: "Marketing", marketingDesc: "Conteúdo personalizado", save: "Salvar" },
 };
 const c = t[lang] || t.en;
 ---
 
-<!-- Banner compacto — oculto por defecto hasta que JS lo muestre -->
-<div id="cookie-banner" class="cookie-banner" role="dialog" aria-label="Cookie consent" style="display:none">
-  <div class="cookie-inner">
-    <p class="cookie-text">
-      {c.text}
-      <a href={`/${lang}/cookies`} class="cookie-link">{c.more}</a>
-    </p>
-    <div class="cookie-actions">
-      <button id="cookie-settings-btn" class="btn-cookie-secondary">{c.settings}</button>
-      <button id="cookie-reject-btn" class="btn-cookie-secondary">{c.reject}</button>
-      <button id="cookie-accept-btn" class="btn-cookie-primary">{c.accept}</button>
-    </div>
+<!-- B10 Fase 1A — consentimiento como diálogo modal nativo (showModal):
+     capa superior por encima de cualquier z-index (también del panel de
+     reserva), resto de la página inerte (sin clics, foco ni lector de
+     pantalla), atenuado con ::backdrop y scroll bloqueado en <html>.
+     La lógica de consentimiento no cambia: misma clave, mismo
+     BTAnalytics.updateConsent, mismo retraso de 800 ms. -->
+<dialog
+  id="cookie-banner"
+  class="cookie-dialog cookie-banner"
+  aria-labelledby="cookie-title"
+  aria-describedby="cookie-desc"
+  tabindex="-1"
+>
+  <h2 id="cookie-title" class="cookie-title">{c.title}</h2>
+  <p id="cookie-desc" class="cookie-text">
+    {c.text}
+    <a href={`/${lang}/cookies`} class="cookie-link">{c.more}</a>
+  </p>
+  <!-- Rechazar y Aceptar con el mismo tamaño y peso: elección real, sin
+       cookie wall. Configurar queda como acción terciaria. -->
+  <div class="cookie-actions">
+    <button id="cookie-reject-btn" type="button" class="btn-cookie btn-cookie-reject">{c.reject}</button>
+    <button id="cookie-accept-btn" type="button" class="btn-cookie btn-cookie-accept">{c.accept}</button>
   </div>
-</div>
+  <button id="cookie-settings-btn" type="button" class="btn-cookie-settings">{c.settings}</button>
+</dialog>
 
-<!-- Panel de configuración -->
-<div id="cookie-panel" class="cookie-panel" style="display:none" role="dialog">
-  <div class="cookie-panel-inner">
-    <div class="cookie-panel-header">
-      <h3 class="cookie-panel-title">{c.panelTitle}</h3>
-      <button id="cookie-panel-close" class="cookie-panel-close">✕</button>
-    </div>
-    <div class="cookie-panel-body">
-      <label class="cookie-option">
-        <div>
-          <div class="cookie-option-name">{c.essential}</div>
-          <div class="cookie-option-desc">{c.essentialDesc}</div>
-        </div>
-        <input type="checkbox" checked disabled class="cookie-check" />
-      </label>
-      <label class="cookie-option">
-        <div>
-          <div class="cookie-option-name">{c.analytics}</div>
-          <div class="cookie-option-desc">{c.analyticsDesc}</div>
-        </div>
-        <input type="checkbox" id="analytics-check" class="cookie-check" />
-      </label>
-      <label class="cookie-option">
-        <div>
-          <div class="cookie-option-name">{c.marketing}</div>
-          <div class="cookie-option-desc">{c.marketingDesc}</div>
-        </div>
-        <input type="checkbox" id="marketing-check" class="cookie-check" />
-      </label>
-    </div>
-    <div class="cookie-panel-footer">
-      <button id="cookie-save-btn" class="btn-cookie-primary">{c.save}</button>
-    </div>
+<!-- Panel de configuración (también desde "Gestionar cookies" del footer) -->
+<dialog
+  id="cookie-panel"
+  class="cookie-dialog cookie-panel"
+  aria-labelledby="cookie-panel-title"
+  tabindex="-1"
+>
+  <div class="cookie-panel-header">
+    <h2 id="cookie-panel-title" class="cookie-panel-title">{c.panelTitle}</h2>
+    <button id="cookie-panel-close" type="button" class="cookie-panel-close" aria-label={c.close}>✕</button>
   </div>
-</div>
+  <div class="cookie-panel-body">
+    <label class="cookie-option">
+      <div>
+        <div class="cookie-option-name">{c.essential}</div>
+        <div class="cookie-option-desc">{c.essentialDesc}</div>
+      </div>
+      <input type="checkbox" checked disabled class="cookie-check" />
+    </label>
+    <label class="cookie-option">
+      <div>
+        <div class="cookie-option-name">{c.analytics}</div>
+        <div class="cookie-option-desc">{c.analyticsDesc}</div>
+      </div>
+      <input type="checkbox" id="analytics-check" class="cookie-check" />
+    </label>
+    <label class="cookie-option">
+      <div>
+        <div class="cookie-option-name">{c.marketing}</div>
+        <div class="cookie-option-desc">{c.marketingDesc}</div>
+      </div>
+      <input type="checkbox" id="marketing-check" class="cookie-check" />
+    </label>
+  </div>
+  <div class="cookie-panel-footer">
+    <button id="cookie-save-btn" type="button" class="btn-cookie btn-cookie-accept">{c.save}</button>
+  </div>
+</dialog>
 
 <style>
-  .cookie-banner {
-    position: fixed;
-    bottom: 0.625rem;
-    left: 0.625rem;
-    right: 0.625rem;
-    z-index: 9999;
-    max-width: 680px;
-    margin: 0 auto;
-    background: #fff;
+  /* Navegadores sin <dialog>: oculto salvo abierto */
+  .cookie-dialog:not([open]) { display: none; }
+
+  .cookie-dialog {
+    box-sizing: border-box;
+    margin: auto auto 0.75rem;
+    width: calc(100% - 1.5rem);
+    max-width: 560px;
+    max-height: calc(100dvh - 1.5rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 1.125rem 1.125rem calc(1rem + env(safe-area-inset-bottom));
     border: 1px solid #e5e7eb;
-    border-radius: 14px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
-    padding: 0.75rem 0.875rem;
-    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    border-radius: 16px;
+    background: #fff;
+    color: #111827;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+  }
+  /* Atenuado sutil: la página sigue viéndose como contexto */
+  .cookie-dialog::backdrop {
+    background: rgba(15, 23, 42, 0.4);
   }
   @media (min-width: 768px) {
-    .cookie-banner {
-      left: auto;
-      right: 1.5rem;
-      bottom: 1.5rem;
-      max-width: 420px;
-      padding: 1rem 1.125rem;
-      padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    .cookie-dialog {
+      margin-bottom: 1.5rem;
+      padding: 1.375rem 1.5rem 1.25rem;
     }
   }
-  .cookie-inner { display: flex; flex-direction: column; gap: 0.5rem; }
-  .cookie-text { font-size: 0.78rem; color: #374151; line-height: 1.4; margin: 0; }
-  .cookie-link { color: #2563eb; text-decoration: underline; margin-left: 0.25rem; white-space: nowrap; }
-  .cookie-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
-  .btn-cookie-primary,
-  .btn-cookie-secondary {
+
+  .cookie-title {
+    margin: 0 0 0.375rem;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .cookie-text {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: #374151;
+  }
+  .cookie-link {
+    margin-left: 0.25rem;
+    color: #111827;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    white-space: nowrap;
+  }
+
+  .cookie-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.625rem;
+    margin-top: 1rem;
+  }
+  .btn-cookie {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 2.25rem;
-    flex: 1 1 auto;
-    white-space: nowrap;
+    min-height: 2.75rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background-color 0.15s;
   }
-  .btn-cookie-primary {
+  .btn-cookie-reject {
+    background: #111827;
+    color: #fff;
+    border: 1px solid #111827;
+  }
+  .btn-cookie-reject:hover { background: #1f2937; }
+  .btn-cookie-accept {
     background: #facc15;
     color: #111827;
+    border: 1px solid #facc15;
+  }
+  .btn-cookie-accept:hover { background: #fbbf24; }
+  .btn-cookie-settings {
+    display: block;
+    min-height: 2.75rem;
+    margin: 0.25rem auto 0;
+    padding: 0.5rem 0.75rem;
+    background: none;
     border: none;
-    border-radius: 8px;
-    padding: 0.4rem 0.85rem;
-    font-size: 0.8rem;
-    font-weight: 700;
+    color: #374151;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
     cursor: pointer;
-    transition: background 0.15s;
   }
-  .btn-cookie-primary:hover { background: #fbbf24; }
-  .btn-cookie-secondary {
-    background: transparent;
-    color: #4b5563;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    padding: 0.4rem 0.7rem;
-    font-size: 0.8rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .btn-cookie-secondary:hover { color: #111827; border-color: #9ca3af; }
-  .btn-cookie-primary:focus-visible,
-  .btn-cookie-secondary:focus-visible,
-  .cookie-link:focus-visible {
-    outline: 2px solid #2563eb;
-    outline-offset: 2px;
-  }
-  @media (min-width: 400px) {
-    .cookie-actions { flex-wrap: nowrap; }
-    .btn-cookie-primary,
-    .btn-cookie-secondary { flex: 0 0 auto; }
-  }
+  .btn-cookie-settings:hover { color: #111827; }
 
-  /* Panel */
-  .cookie-panel {
-    position: fixed;
-    inset: 0;
-    z-index: 10000;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-  }
-  @media (min-width: 640px) {
-    .cookie-panel { align-items: center; }
-  }
-  .cookie-panel-inner {
-    background: #fff;
-    border-radius: 16px 16px 0 0;
-    padding: 1.5rem;
-    width: 100%;
-    max-width: 480px;
-    max-height: 80vh;
-    overflow-y: auto;
-  }
-  @media (min-width: 640px) {
-    .cookie-panel-inner { border-radius: 16px; }
-  }
-  .cookie-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
-  .cookie-panel-title { font-size: 1rem; font-weight: 700; color: #111827; margin: 0; }
-  .cookie-panel-close { background: none; border: none; font-size: 1.1rem; color: #6b7280; cursor: pointer; padding: 0.25rem; min-width: 2.25rem; min-height: 2.25rem; }
+  /* Foco: el mismo tratamiento que los campos del booking (negro + halo amarillo) */
+  .btn-cookie:focus-visible,
+  .btn-cookie-settings:focus-visible,
+  .cookie-link:focus-visible,
   .cookie-panel-close:focus-visible,
   .cookie-check:focus-visible {
-    outline: 2px solid #2563eb;
+    outline: 2px solid #111827;
     outline-offset: 2px;
+    box-shadow: 0 0 0 5px rgba(250, 204, 21, 0.7);
   }
-  .cookie-panel-body { display: flex; flex-direction: column; gap: 0.875rem; margin-bottom: 1.25rem; }
+  .cookie-dialog:focus { outline: none; }
+
+  /* Panel */
+  .cookie-panel { max-width: 480px; }
+  @media (min-width: 640px) {
+    .cookie-panel { margin: auto; }
+  }
+  .cookie-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  .cookie-panel-title { font-size: 1rem; font-weight: 700; color: #111827; margin: 0; }
+  .cookie-panel-close { background: none; border: none; font-size: 1.1rem; color: #4b5563; cursor: pointer; padding: 0.25rem; min-width: 2.75rem; min-height: 2.75rem; border-radius: 0.5rem; }
+  .cookie-panel-body { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.25rem; }
   .cookie-option { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.75rem; background: #f9fafb; border-radius: 10px; cursor: pointer; }
   .cookie-option-name { font-size: 0.875rem; font-weight: 600; color: #111827; }
-  .cookie-option-desc { font-size: 0.75rem; color: #6b7280; margin-top: 0.15rem; }
-  .cookie-check { width: 1.1rem; height: 1.1rem; accent-color: #facc15; flex-shrink: 0; cursor: pointer; }
+  .cookie-option-desc { font-size: 0.75rem; color: #4b5563; margin-top: 0.15rem; }
+  .cookie-check { width: 1.25rem; height: 1.25rem; accent-color: #111827; flex-shrink: 0; cursor: pointer; }
   .cookie-panel-footer { display: flex; justify-content: flex-end; }
+  .cookie-panel-footer .btn-cookie { min-width: 8rem; }
+
+  /* Scroll bloqueado mientras el consentimiento está abierto. Sólo en
+     <html> (mismo patrón que html.bt-menu-open del header): overflow en
+     <body> rompería el header sticky. scrollbar-gutter evita el salto
+     horizontal al desaparecer la barra de scroll. */
+  :global(html.bt-consent-open) {
+    overflow: hidden;
+    scrollbar-gutter: stable;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .cookie-dialog[open] { animation: bt-consent-in 160ms ease-out; }
+  }
+  @keyframes bt-consent-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
 </style>
 
 <script define:vars={{ COOKIE_KEY: "belgotours_cookie_consent" }}>
@@ -190,6 +233,10 @@ const c = t[lang] || t.en;
   const closeBtn   = document.getElementById("cookie-panel-close");
   const analyticsCheck = document.getElementById("analytics-check");
   const marketingCheck = document.getElementById("marketing-check");
+  if (!banner || !panel) return;
+
+  const canModal = typeof banner.showModal === "function";
+  let returnFocus = null;
 
   function readPrefs() {
     try {
@@ -200,44 +247,141 @@ const c = t[lang] || t.en;
     }
   }
 
-  // Coordinación con otros elementos fixed de la página (sticky CTA,
-  // AI assistant): en vez de offsets arbitrarios por viewport, el
-  // banner publica su propia huella vertical real como variable CSS
-  // — cualquier elemento fixed puede sumarla a su `bottom` para nunca
-  // quedar tapado mientras el banner está visible (B09 Gate 7).
-  function setCookieOffset(px) {
-    document.documentElement.style.setProperty("--bt-cookie-offset", px + "px");
+  // B09 Gate 7 publicaba la altura del banner en --bt-cookie-offset para
+  // que los elementos fixed no quedaran tapados. Con el diálogo modal
+  // esos elementos quedan inertes bajo el backdrop: se deja en 0 para
+  // que no salten al cerrar.
+  document.documentElement.style.setProperty("--bt-cookie-offset", "0px");
+
+  const isOpen = (d) => d.hasAttribute("open");
+  const anyOpen = () => isOpen(banner) || isOpen(panel);
+
+  // Sin <dialog>.showModal (navegadores antiguos): inert manual en el
+  // resto del <body>
+  function setFallbackInert(on) {
+    if (canModal) return;
+    for (const el of document.body.children) {
+      if (el === banner || el === panel) continue;
+      if (on) el.setAttribute("inert", "");
+      else el.removeAttribute("inert");
+    }
   }
 
-  function measureBannerOffset() {
-    if (!banner || getComputedStyle(banner).display === "none") {
-      setCookieOffset(0);
+  function openDialog(d) {
+    if (!anyOpen()) {
+      const a = document.activeElement;
+      returnFocus = a && a !== document.body ? a : null;
+    }
+    document.documentElement.classList.add("bt-consent-open");
+    document.addEventListener("touchmove", blockTouchScroll, { passive: false });
+    if (canModal) {
+      if (!isOpen(d)) d.showModal();
+    } else {
+      d.setAttribute("open", "");
+      setFallbackInert(true);
+    }
+    // El foco entra en el diálogo (no en "Aceptar"): el lector de
+    // pantalla anuncia título y texto antes que las opciones
+    d.focus({ preventScroll: true });
+  }
+
+  function closeDialog(d) {
+    if (!isOpen(d)) return;
+    // Cierre propio (decisión o paso a Configurar): no reabrir en "close"
+    d.dataset.intentional = "1";
+    if (canModal) d.close();
+    else d.removeAttribute("open");
+  }
+
+  function finish() {
+    if (anyOpen()) return;
+    setFallbackInert(false);
+    document.documentElement.classList.remove("bt-consent-open");
+    document.removeEventListener("touchmove", blockTouchScroll);
+    if (returnFocus && returnFocus.isConnected) {
+      returnFocus.focus({ preventScroll: true });
+    }
+    returnFocus = null;
+  }
+
+  // Cerrar sin elegir nunca deja la decisión pendiente sin aviso: si no
+  // hay preferencia guardada, el banner vuelve
+  function closePanel() {
+    closeDialog(panel);
+    if (!readPrefs()) openDialog(banner);
+    finish();
+  }
+
+  function focusables(d) {
+    return Array.from(
+      d.querySelectorAll("a[href], button:not([disabled]), input:not([disabled])")
+    ).filter((el) => el.getClientRects().length > 0);
+  }
+
+  // Captura en window (antes que los listeners de document, incluida la
+  // trampa de foco del panel de reserva): Tab/Shift+Tab circulan dentro
+  // del diálogo y Escape no cierra el banner sin una decisión.
+  window.addEventListener("keydown", (e) => {
+    if (!anyOpen()) return;
+    const d = isOpen(panel) ? panel : banner;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (d === panel) closePanel();
       return;
     }
-    const rect = banner.getBoundingClientRect();
-    setCookieOffset(Math.max(0, Math.round(window.innerHeight - rect.top + 8)));
+    if (e.key !== "Tab") return;
+    e.stopImmediatePropagation();
+    const items = focusables(d);
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || active === d || !d.contains(active))) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && (active === last || !d.contains(active))) {
+      e.preventDefault();
+      first.focus();
+    }
+  }, true);
+
+  // Escape nativo del <dialog> (cancel): mismo criterio que arriba
+  banner.addEventListener("cancel", (e) => e.preventDefault());
+  panel.addEventListener("cancel", (e) => {
+    e.preventDefault();
+    closePanel();
+  });
+  // Si el navegador cierra el banner por su cuenta sin decisión, vuelve
+  banner.addEventListener("close", () => {
+    if (banner.dataset.intentional) {
+      delete banner.dataset.intentional;
+      return;
+    }
+    if (!readPrefs() && !isOpen(panel)) requestAnimationFrame(() => openDialog(banner));
+  });
+
+  // iOS: el backdrop no siempre bloquea el arrastre del documento; fuera
+  // del diálogo se anula el gesto. Listener no pasivo sólo mientras el
+  // consentimiento está abierto (no penaliza el scroll del resto del tiempo).
+  function blockTouchScroll(e) {
+    const d = isOpen(panel) ? panel : banner;
+    if (!d.contains(e.target)) e.preventDefault();
   }
 
   // Mostrar banner con pequeño delay para no bloquear LCP —
   // sólo en la primera visita, sin elección previa guardada.
   if (!readPrefs()) {
     setTimeout(() => {
-      if (banner) banner.style.display = "block";
-      requestAnimationFrame(measureBannerOffset);
+      if (!readPrefs()) openDialog(banner);
     }, 800);
   }
 
-  let resizeTimer;
-  window.addEventListener("resize", () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(measureBannerOffset, 150);
-  });
-
   function save(prefs) {
     localStorage.setItem(COOKIE_KEY, JSON.stringify(prefs));
-    if (banner) banner.style.display = "none";
-    if (panel)  panel.style.display  = "none";
-    setCookieOffset(0);
+    closeDialog(banner);
+    closeDialog(panel);
+    finish();
     window.BTAnalytics?.updateConsent(prefs.analytics, prefs.marketing);
   }
 
@@ -250,14 +394,11 @@ const c = t[lang] || t.en;
   });
 
   settingsBtn?.addEventListener("click", () => {
-    if (banner) banner.style.display = "none";
-    setCookieOffset(0);
+    closeDialog(banner);
     openPanel();
   });
 
-  closeBtn?.addEventListener("click", () => {
-    if (panel)  panel.style.display  = "none";
-  });
+  closeBtn?.addEventListener("click", closePanel);
 
   saveBtn?.addEventListener("click", () => {
     const analytics = analyticsCheck?.checked ?? false;
@@ -274,7 +415,7 @@ const c = t[lang] || t.en;
     const prefs = readPrefs();
     if (analyticsCheck) analyticsCheck.checked = !!prefs?.analytics;
     if (marketingCheck) marketingCheck.checked = !!prefs?.marketing;
-    if (panel) panel.style.display = "flex";
+    openDialog(panel);
   }
 
   window.openCookiePreferences = openPanel;
