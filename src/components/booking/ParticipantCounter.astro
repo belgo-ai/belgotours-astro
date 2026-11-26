@@ -15,7 +15,9 @@ interface Props {
 const { lang = "es", showMaxHint = true } = Astro.props as Props;
 ---
 
-<div id="participantCounter" class="participant-counter bg-white border border-gray-200 rounded-2xl p-5 space-y-5">
+<!-- B10 Fase 1B: sin card propia (ya va dentro del panel); controles de
+     44 px y estado desactivado sin amarillo -->
+<div id="participantCounter" class="participant-counter space-y-4">
 
   <!-- Título (UX-03: el aviso de máximo pasa debajo si no cabe) -->
   <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
@@ -55,24 +57,26 @@ const { lang = "es", showMaxHint = true } = Astro.props as Props;
       </div>
     </div>
 
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2">
       <button
         type="button"
         id="decreaseAdults"
-        class="w-9 h-9 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition disabled:opacity-40"
+        aria-label={lang === "en" ? "Remove an adult" : lang === "it" ? "Rimuovi un adulto" : lang === "fr" ? "Retirer un adulte" : "Quitar un adulto"}
+        class="bt-count-btn w-11 h-11 rounded-full bg-gray-100 text-gray-900 text-lg font-semibold hover:bg-gray-200 transition disabled:bg-gray-50 disabled:text-gray-300 disabled:cursor-not-allowed"
         disabled
       >
         −
       </button>
 
-      <span id="adultsCount" class="w-6 text-center font-semibold text-gray-900">
+      <span id="adultsCount" class="w-7 text-center text-lg font-semibold text-gray-900 tabular-nums" aria-live="polite">
         1
       </span>
 
       <button
         type="button"
         id="increaseAdults"
-        class="w-9 h-9 rounded-full bg-yellow-400 text-gray-900 hover:bg-yellow-500 transition disabled:opacity-40 disabled:hover:bg-yellow-400 disabled:cursor-not-allowed"
+        aria-label={lang === "en" ? "Add an adult" : lang === "it" ? "Aggiungi un adulto" : lang === "fr" ? "Ajouter un adulte" : "Añadir un adulto"}
+        class="bt-count-btn w-11 h-11 rounded-full bg-yellow-400 text-gray-900 text-lg font-semibold hover:bg-yellow-300 transition disabled:bg-gray-50 disabled:text-gray-300 disabled:cursor-not-allowed"
       >
         +
       </button>
@@ -91,24 +95,26 @@ const { lang = "es", showMaxHint = true } = Astro.props as Props;
       </div>
     </div>
 
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2">
       <button
         type="button"
         id="decreaseChildren"
-        class="w-9 h-9 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition disabled:opacity-40"
+        aria-label={lang === "en" ? "Remove a child" : lang === "it" ? "Rimuovi un bambino" : lang === "fr" ? "Retirer un enfant" : "Quitar un niño"}
+        class="bt-count-btn w-11 h-11 rounded-full bg-gray-100 text-gray-900 text-lg font-semibold hover:bg-gray-200 transition disabled:bg-gray-50 disabled:text-gray-300 disabled:cursor-not-allowed"
         disabled
       >
         −
       </button>
 
-      <span id="childrenCount" class="w-6 text-center font-semibold text-gray-900">
+      <span id="childrenCount" class="w-7 text-center text-lg font-semibold text-gray-900 tabular-nums" aria-live="polite">
         0
       </span>
 
       <button
         type="button"
         id="increaseChildren"
-        class="w-9 h-9 rounded-full bg-yellow-400 text-gray-900 hover:bg-yellow-500 transition disabled:opacity-40 disabled:hover:bg-yellow-400 disabled:cursor-not-allowed"
+        aria-label={lang === "en" ? "Add a child" : lang === "it" ? "Aggiungi un bambino" : lang === "fr" ? "Ajouter un enfant" : "Añadir un niño"}
+        class="bt-count-btn w-11 h-11 rounded-full bg-yellow-400 text-gray-900 text-lg font-semibold hover:bg-yellow-300 transition disabled:bg-gray-50 disabled:text-gray-300 disabled:cursor-not-allowed"
       >
         +
       </button>

@@ -317,11 +317,13 @@ const firstDate = fechasDisponibles[0] ?? todayISO();
 const lastDate = fechasDisponibles[fechasDisponibles.length - 1] ?? firstDate;
 ---
 
-<div class="calendar-2026 space-y-8" data-lang={lang}>
+<div class="calendar-2026 space-y-4 md:space-y-6" data-lang={lang}>
   <!-- Fecha inteligente -->
-<div class="space-y-3">
+<!-- B10 1B.1: en móvil el título del paso ("Selecciona fecha y hora")
+     ya lo dice; esta etiqueta queda para lectores de pantalla -->
+<div class="space-y-2 md:space-y-3">
 
-  <label class="block font-semibold text-gray-800">
+  <label class="block font-semibold text-gray-800 max-md:sr-only">
     {texts.selectDate}
   </label>
 
@@ -345,7 +347,7 @@ const lastDate = fechasDisponibles[fechasDisponibles.length - 1] ?? firstDate;
   aria-controls="calendarPanel"
   data-label-open={texts.calendarOpenLabel}
   data-label-close={texts.calendarCloseLabel}
-  class="cal-toggle mt-1 w-full flex items-center gap-2.5 px-4 py-3 rounded-xl border border-gray-300 bg-white text-sm font-semibold text-gray-900 hover:border-gray-500 transition"
+  class="cal-toggle w-full min-h-11 flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-sm font-semibold text-gray-900 hover:border-gray-500 transition"
 >
     <Icon name="calendar" size={18} />
     <span data-cal-toggle-label class="flex-1 text-left">{texts.calendarOpenLabel}</span>
@@ -367,17 +369,17 @@ const lastDate = fechasDisponibles[fechasDisponibles.length - 1] ?? firstDate;
         type="button"
         id="calendarPrevMonth"
         aria-label={texts.prevMonth}
-        class="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+        class="w-10 h-10 rounded-full flex items-center justify-center text-lg text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
       >‹</button>
       <span id="calendarMonthLabel" class="font-semibold text-gray-800 text-sm capitalize"></span>
       <button
         type="button"
         id="calendarNextMonth"
         aria-label={texts.nextMonth}
-        class="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+        class="w-10 h-10 rounded-full flex items-center justify-center text-lg text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
       >›</button>
     </div>
-    <div id="calendarGrid" class="grid grid-cols-7 gap-1" role="grid"></div>
+    <div id="calendarGrid" class="grid grid-cols-7 gap-1"></div>
     <div class="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100 text-[11px] text-gray-500">
       <span class="flex items-center gap-1">
         <span class="w-1.5 h-1.5 rounded-full bg-yellow-500 inline-block" aria-hidden="true"></span>
@@ -405,13 +407,13 @@ const lastDate = fechasDisponibles[fechasDisponibles.length - 1] ?? firstDate;
 
   <!-- Horarios -->
   <div>
-    <label class="block font-semibold mb-3 text-gray-800">
+    <label class="block font-semibold mb-2 md:mb-3 text-gray-800">
       {texts.selectTime}
     </label>
 
     <div
       id="horariosContainer"
-      class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+      class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2.5"
     ></div>
   </div>
 </div>
@@ -747,7 +749,7 @@ function renderCalendarGrid() {
 
   weekdayLabels().forEach((w) => {
     const el = document.createElement("div");
-    el.className = "text-[11px] font-semibold text-gray-400 text-center py-1 uppercase";
+    el.className = "text-[11px] font-semibold text-gray-500 text-center py-1 uppercase";
     el.setAttribute("aria-hidden", "true");
     el.textContent = w;
     calendarGrid.appendChild(el);
@@ -776,7 +778,8 @@ function renderCalendarGrid() {
       "aria-label",
       dt.setLocale(calendarLocale).toFormat("cccc d LLLL")
     );
-    if (isSelected) btn.setAttribute("aria-selected", "true");
+    // botón conmutable: aria-pressed (aria-selected no es válido en <button>)
+    if (isAvailable || isSelected) btn.setAttribute("aria-pressed", String(isSelected));
     if (isToday) btn.setAttribute("aria-current", "date");
 
     const base =
@@ -1012,35 +1015,23 @@ function getUrgencyText(spots: number): string | null {
     btn.className = `
   time-slot
   rounded-xl
-  p-4
+  px-3
+  py-3
   text-center
   bg-white
   cursor-pointer
-  shadow-sm
 `;
 
     btn.innerHTML = `
-  <div class="text-lg font-bold text-gray-900">
+  <div class="text-lg font-bold text-gray-900 leading-tight">
     ${h.hora}
   </div>
 
-  <div class="text-xs text-gray-500 mt-1">
+  <div class="text-xs text-gray-600 mt-0.5">
     ${h.cupoDisponible} ${spotsText}
   </div>
 
   ${urgencia}
-
-  <div class="text-xs text-gray-500 mt-2">
-    ${
-      currentLang === "en"
-        ? "Select"
-        : currentLang === "it"
-        ? "Seleziona"
-        : currentLang === "fr"
-        ? "Sélectionner"
-        : "Seleccionar"
-    }
-  </div>
 `;
 
     btn.onclick = () => {
@@ -1165,9 +1156,9 @@ function getUrgencyText(spots: number): string | null {
 }
 
 :global(.time-slot:hover) {
-  border-color: #9ca3af;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 18px rgba(0,0,0,.08);
+  border-color: #6b7280;
+  /* sin "salto" al pasar el ratón (global.css lo añade a .time-slot) */
+  transform: none;
 }
 
 :global(.time-slot:active) {
@@ -1256,7 +1247,7 @@ function getUrgencyText(spots: number): string | null {
   right: 0;
   bottom: 0;
   width: 2rem;
-  background: linear-gradient(to right, transparent, #f9fafb);
+  background: linear-gradient(to right, transparent, #fff);
   pointer-events: none;
 }
 

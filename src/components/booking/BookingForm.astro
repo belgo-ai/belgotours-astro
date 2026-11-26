@@ -81,18 +81,20 @@ const STRAPI_API_BASE =
   id="bookingForm"
   data-lang={lang}
   data-api={STRAPI_API_BASE}
-  class="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden"
+  class="max-w-4xl mx-auto bg-white rounded-2xl"
 >
   <!-- CABECERA -->
-<div class="bg-white border-b border-gray-200 p-6 md:p-8">
-  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+<!-- B10 Fase 1B: cabecera compacta (antes ~177 px en móvil): más sitio
+     para fechas y horarios en el primer pantallazo del panel -->
+<div class="bg-white border-b border-gray-200 px-4 py-2.5 md:px-7 md:py-5 rounded-t-2xl">
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
 
     <!-- Título principal -->
     <div>
-      <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1">
+      <h2 class="text-lg md:text-2xl font-bold text-gray-900 leading-tight">
         {titleByLang[lang] || titleByLang.es}
       </h2>
-      <p class="text-gray-600 text-sm md:text-base line-clamp-2">
+      <p class="text-gray-600 text-sm line-clamp-1 md:line-clamp-2 mt-0.5">
         {tour?.titulo}
       </p>
     </div>
@@ -101,7 +103,7 @@ const STRAPI_API_BASE =
     {(tour?.duracion || tour?.precio === 0) && (
       <!-- Badge informativo -->
 <div class="flex items-center">
-  <div class="inline-flex items-center gap-2 bg-gray-100 text-gray-800 px-4 py-2 rounded-full text-sm font-medium">
+  <div class="inline-flex items-center gap-2 bg-gray-100 text-gray-800 px-3 py-1 md:px-4 md:py-1.5 rounded-full text-xs md:text-sm font-medium">
 
     {/* DURACIÓN */}
     {!isPrivateTour && tour?.duracion && (
@@ -182,10 +184,10 @@ const STRAPI_API_BASE =
     </button>
   </div>
 
-  <div class="p-5 md:p-7 space-y-8 pb-28">
+  <div class="px-4 pt-3 md:px-7 md:pt-5 space-y-6 pb-28 bt-steps-body">
     <!-- PASO 1: FECHA / HORARIO / PARTICIPANTES -->
-    <div id="step1" class="booking-step active space-y-6">
-        <h3 class="text-xl md:text-2xl font-bold text-gray-900">
+    <div id="step1" class="booking-step active space-y-3 md:space-y-5">
+        <h3 class="text-lg md:text-xl font-bold text-gray-900">
   {lang === "es" && "Selecciona fecha y hora"}
   {lang === "en" && "Select date and time"}
   {lang === "it" && "Seleziona data e orario"}
@@ -218,13 +220,15 @@ const STRAPI_API_BASE =
     )}
 
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <div class="bg-gray-50 rounded-2xl border border-gray-200 p-4 md:p-5">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-0 items-start">
+        <div class="min-w-0 lg:pr-7">
           <BookingCalendar tour={tour} lang={lang} />
         </div>
 
-        <div class="bg-gray-50 rounded-2xl border border-gray-200 p-4 md:p-5 space-y-6">
-          <ParticipantCounter lang={lang} />
+        <!-- Free tour: la regla de máx. 7 se explica una sola vez (el texto
+             completo de abajo); en el resto la da el propio contador -->
+        <div class="min-w-0 space-y-4 border-t border-gray-200 pt-5 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-7">
+          <ParticipantCounter lang={lang} showMaxHint={!isFreeTour} />
 
 {isFreeTour && (
   <div class="space-y-2">
@@ -527,7 +531,7 @@ const STRAPI_API_BASE =
             id="agreeToTerms"
             name="agreeToTerms"
             required
-            class="mt-1 text-blue-600 focus:ring-blue-500 rounded"
+            class="mt-0.5 h-5 w-5 shrink-0 accent-gray-900"
           />
           <span class="text-sm text-gray-700">
             {privacyTextByLang[lang] || privacyTextByLang.es} *
@@ -757,7 +761,7 @@ const STRAPI_API_BASE =
   <button
     id="nextStep"
     type="button"
-    class="px-8 py-3.5 bg-yellow-400 hover:bg-yellow-300 text-neutral-900 font-bold rounded-xl transition disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+    class="px-8 py-3 md:py-3.5 bg-yellow-400 hover:bg-yellow-300 text-neutral-900 font-bold rounded-xl transition disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
     disabled
   >
     {lang === "es" && "Continuar →"}
@@ -866,6 +870,28 @@ const STRAPI_API_BASE =
     width: 100%;
   }
 
+ /* B10 Fase 1B: por encima de 768 px la barra queda fija al pie del área
+    con scroll del panel ("Continuar" siempre a la vista en escritorio,
+    también con poca altura); hasta 768 px sigue fixed como antes */
+ @media (min-width: 769px) {
+  #bookingNav {
+    position: sticky;
+    /* hasta el borde del área con scroll: el panel tiene 1rem (+ zona
+       segura) de padding inferior y el contenido asomaba por debajo */
+    bottom: calc(-1rem - env(safe-area-inset-bottom));
+    z-index: 5;
+    background: #fff;
+    /* a sangre dentro del formulario (padding lateral de 1.75rem) */
+    margin: 1.5rem -1.75rem 0;
+    padding: 0.75rem 1.75rem calc(0.75rem + 1rem + env(safe-area-inset-bottom));
+    border-bottom-left-radius: 1rem;
+    border-bottom-right-radius: 1rem;
+  }
+  .bt-steps-body {
+    padding-bottom: 0;
+  }
+ }
+
  @media (max-width: 768px) {
   #bookingNav {
     position: fixed;
@@ -874,7 +900,8 @@ const STRAPI_API_BASE =
     left: 0;
     right: 0;
     background: white;
-    padding: 12px 20px;
+    /* B10 1B.1: barra más baja (botón de 48 px) y zona segura inferior */
+    padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
     border-top: 1px solid #e5e7eb;
     z-index: 50;
   }
